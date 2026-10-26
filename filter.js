@@ -169,12 +169,12 @@
 
   // 슬라이더 스키마 — 기본값은 여기서 조정
   BoothFilter.PARAMS = [
-    { key: 'fisheye',    label: 'Fisheye',        min: 0,    max: 0.9,  step: 0.01,  value: 0.55 },
-    { key: 'zoom',       label: '줌',             min: 0.6,  max: 1.6,  step: 0.01,  value: 1.0 },
-    { key: 'chroma',     label: '색수차',          min: 0,    max: 0.03, step: 0.001, value: 0.006 },
-    { key: 'feather',    label: '페더 폭',         min: 0,    max: 1.0,  step: 0.01,  value: 0.35 },
-    { key: 'inset',      label: '페더 안쪽 여백',   min: 0,    max: 0.5,  step: 0.01,  value: 0.0 },
-    { key: 'round',      label: '테두리 둥글기',    min: 0,    max: 1,    step: 0.01,  value: 0.85 },
+    { key: 'fisheye',    label: 'Fisheye',        min: 0,    max: 0.9,  step: 0.01,  value: 0.9 },
+    { key: 'zoom',       label: '줌',             min: 0.6,  max: 1.6,  step: 0.01,  value: 0.6 },
+    { key: 'chroma',     label: '색수차',          min: 0,    max: 0.03, step: 0.001, value: 0.014 },
+    { key: 'feather',    label: '페더 폭',         min: 0,    max: 1.0,  step: 0.01,  value: 0.13 },
+    { key: 'inset',      label: '페더 안쪽 여백',   min: 0,    max: 0.5,  step: 0.01,  value: 0 },
+    { key: 'round',      label: '테두리 둥글기',    min: 0,    max: 1,    step: 0.01,  value: 1 },
     { key: 'noise',      label: '노이즈',          min: 0,    max: 0.5,  step: 0.01,  value: 0.14 },
     { key: 'grain',      label: '노이즈 입자 크기', min: 1,    max: 6,    step: 0.5,   value: 2 },
     { key: 'brightness', label: '밝기',            min: -0.3, max: 0.3,  step: 0.01,  value: 0.02 },
