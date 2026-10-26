@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261026225705">
+<link rel="stylesheet" href="style.css?v=20261026225842">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -190,16 +190,16 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261026225705"></script>
-<script src="lib/supabase.min.js?v=20261026225705"></script>
-<script src="lib/qrcode.min.js?v=20261026225705"></script>
-<script src="common.js?v=20261026225705"></script>
-<script src="filter.js?v=20261026225705"></script>
+<script src="config.js?v=20261026225842"></script>
+<script src="lib/supabase.min.js?v=20261026225842"></script>
+<script src="lib/qrcode.min.js?v=20261026225842"></script>
+<script src="common.js?v=20261026225842"></script>
+<script src="filter.js?v=20261026225842"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
   const $ = id => document.getElementById(id);
-  const FX_KEY = 'booth.fx.v2', CAM_KEY = 'booth.cam';
+  const FX_KEY = 'booth.fx.v3', CAM_KEY = 'booth.cam';
 
   const canvas = $('view');
   canvas.width = C.OUTPUT_W;
