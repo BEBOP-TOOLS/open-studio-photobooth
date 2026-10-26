@@ -18,6 +18,23 @@
   .actions button, .actions a { width: 100%; text-align: center; }
   .hint { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0; }
   a.link { color: var(--muted); font-size: 14px; }
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+  .stepbox { display: grid; grid-template-columns: 28px 1fr; gap: 12px; transition: opacity .2s; }
+  .stepbox .num {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--muted);
+    display: grid; place-items: center; font-size: 14px; font-weight: 700; color: var(--muted); margin-top: 12px;
+  }
+  .stepbox .body { display: flex; flex-direction: column; gap: 8px; }
+  .stepbox.done .num { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  .stepbox.dim { opacity: .45; }
+  .btn {
+    display: block; text-align: center; text-decoration: none; font-weight: 600; font-size: 17px;
+    border: 1px solid var(--fg); color: var(--fg); border-radius: 999px; padding: 14px 28px;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .steps button { width: 100%; }
+  .sub-actions { display: flex; gap: 8px; }
+  .sub-actions button { flex: 1; padding: 10px 12px; font-size: 15px; }
   .story-preview { display: none; }
   .story-preview.show { display: block; }
   .story-preview img { width: 100%; display: block; border: 1px solid var(--line); }
@@ -28,16 +45,29 @@
   <div class="eyebrow" id="sub"></div>
   <img class="photo" id="photo" alt="">
   <h1 id="who"></h1>
-  <div class="actions">
-    <button class="primary" id="shareStory" disabled>인스타그램 스토리에 공유</button>
-    <button id="savePhoto" disabled>사진 저장</button>
-    <button class="ghost" id="addArchive" hidden>아카이브에 추가</button>
+  <div class="steps" id="steps">
+    <div class="stepbox" id="step1">
+      <div class="num">1</div>
+      <div class="body">
+        <button class="primary" id="shareStory" disabled>스토리 이미지 저장</button>
+        <p class="hint" id="hint1">공유 창에서 <b>이미지 저장</b>을 눌러주세요.<br>목록에 Instagram이 보이면 바로 눌러도 돼요.</p>
+      </div>
+    </div>
+    <div class="stepbox dim" id="step2">
+      <div class="num">2</div>
+      <div class="body">
+        <a class="btn" id="openIg" href="instagram://story-camera">인스타그램 스토리 열기</a>
+        <p class="hint">스토리 화면 왼쪽 아래 갤러리에서 방금 저장한 사진을 골라주세요.</p>
+      </div>
+    </div>
   </div>
-  <p class="hint" id="hint">공유 버튼을 누르고 목록에서 <b>Instagram</b>을 고른 뒤 <b>스토리</b>를 선택하세요.</p>
   <div class="story-preview" id="storyPreview">
-    <p class="hint">공유가 안 되면 아래 이미지를 길게 눌러 저장한 뒤, 인스타그램 스토리에서 올려주세요.</p>
+    <p class="hint">이 브라우저에서는 바로 저장이 안 될 수 있어요. 아래 이미지를 길게 눌러 저장해 주세요.</p>
     <img id="storyImg" alt="스토리 이미지">
-    <a href="instagram://story-camera" style="display:block;margin-top:10px"><button style="width:100%">인스타그램 스토리 열기</button></a>
+  </div>
+  <div class="sub-actions" id="subActions">
+    <button id="savePhoto" disabled>원본 사진 저장</button>
+    <button id="addArchive" hidden>아카이브에 추가</button>
   </div>
   <a class="link" href="archive.html">전체 아카이브 보기 →</a>
 </main>
@@ -59,8 +89,8 @@
   if (error || !p) {
     $('who').textContent = '사진을 찾을 수 없어요';
     $('photo').remove();
-    document.querySelector('.actions').remove();
-    $('hint').remove();
+    $('steps').remove();
+    $('subActions').remove();
     return;
   }
 
@@ -126,19 +156,30 @@
   }
 
   async function share(file) {
-    if (!canShareFiles) { download(file); $('storyPreview').classList.add('show'); return; }
+    if (!canShareFiles) { download(file); $('storyPreview').classList.add('show'); return true; }
     try {
       await navigator.share({ files: [file] });
+      return true;
     } catch (e) {
       if (e.name !== 'AbortError') $('storyPreview').classList.add('show');
+      return false;
     }
   }
 
-  $('shareStory').onclick = () => share(storyFile);
+  // 1단계 끝나면 2단계(인스타 열기)를 강조
+  function step1Done() {
+    $('step1').classList.add('done');
+    $('shareStory').classList.remove('primary');
+    $('shareStory').textContent = '✓ 저장했어요 · 다시 저장';
+    $('step2').classList.remove('dim');
+    $('openIg').classList.add('primary');
+  }
+
+  $('shareStory').onclick = async () => { if (await share(storyFile)) step1Done(); };
   $('savePhoto').onclick = () => share(photoFile);
   $('shareStory').disabled = $('savePhoto').disabled = false;
   if (!canShareFiles) {
-    $('hint').textContent = '이 브라우저는 바로 공유를 지원하지 않아요. 이미지를 저장한 뒤 인스타그램 스토리에서 올려주세요.';
+    $('hint1').textContent = '아래 이미지를 길게 눌러 사진에 저장해 주세요.';
     $('storyPreview').classList.add('show');
   }
 })();
