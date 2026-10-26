@@ -183,7 +183,7 @@
   ];
   BoothFilter.DEFAULTS = Object.assign(
     Object.fromEntries(BoothFilter.PARAMS.map(p => [p.key, p.value])),
-    { edgeColor: '#ffffff', mirror: true }
+    { edgeColor: '#000000', mirror: true }
   );
 
   window.BoothFilter = BoothFilter;

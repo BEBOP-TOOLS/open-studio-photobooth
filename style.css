@@ -1,14 +1,15 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 
 :root {
-  --bg: #f2f1ee;
-  --fg: #141414;
-  --muted: #8a8780;
-  --line: #d9d6cf;
-  --panel: #ffffff;
-  --accent: #141414;
-  --accent-fg: #ffffff;
-  --danger: #c4402f;
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted: #8c8c8c;
+  --line: #2e2e2e;
+  --panel: #111111;
+  --accent: #ffffff;
+  --accent-fg: #000000;
+  --danger: #ff6b5a;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
