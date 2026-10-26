@@ -14,7 +14,7 @@
     uniform sampler2D u_tex;
     uniform vec2  u_res, u_vid;
     uniform float u_time, u_mirror;
-    uniform float u_fisheye, u_zoom, u_chroma;
+    uniform float u_fisheye, u_stretch, u_zoom, u_chroma;
     uniform float u_bright, u_contrast, u_sat;
     uniform float u_feather, u_inset, u_round;
     uniform float u_noise, u_grain;
@@ -51,6 +51,11 @@
       float rn = r / maxR;
       float k = u_fisheye;
       float sr = rn * (1.0 - k + k * rn * rn);
+      // 초광각 늘림: 가운데는 작게, 가장자리로 갈수록 크게 늘어남 (모서리 고정)
+      if (u_stretch > 0.0) {
+        float b = u_stretch * 12.0;
+        sr = atan(b * sr) / atan(b);
+      }
       vec2 src = r > 0.0 ? p / r * sr * maxR : p;
       src /= u_zoom;
 
@@ -151,6 +156,7 @@
       gl.uniform1f(u.u_time, time);
       gl.uniform1f(u.u_mirror, params.mirror ? 1 : 0);
       gl.uniform1f(u.u_fisheye, params.fisheye);
+      gl.uniform1f(u.u_stretch, params.stretch || 0);
       gl.uniform1f(u.u_zoom, params.zoom);
       gl.uniform1f(u.u_chroma, params.chroma);
       gl.uniform1f(u.u_bright, params.brightness);
@@ -170,7 +176,8 @@
   // 슬라이더 스키마 — 기본값은 여기서 조정
   BoothFilter.PARAMS = [
     { key: 'fisheye',    label: 'Fisheye (−오목 / +볼록)', min: -0.5, max: 1.0, step: 0.01, value: 0.9 },
-    { key: 'zoom',       label: '줌',             min: 0.6,  max: 1.6,  step: 0.01,  value: 0.6 },
+    { key: 'stretch',    label: '초광각 늘림',      min: 0,    max: 1,    step: 0.01,  value: 0 },
+    { key: 'zoom',       label: '줌',             min: 0.4,  max: 2.5,  step: 0.01,  value: 0.6 },
     { key: 'chroma',     label: '색수차',          min: 0,    max: 0.03, step: 0.001, value: 0.014 },
     { key: 'feather',    label: '페더 폭',         min: 0,    max: 1.0,  step: 0.01,  value: 0.06 },
     { key: 'inset',      label: '페더 안쪽 여백',   min: 0,    max: 0.5,  step: 0.01,  value: 0 },
@@ -189,7 +196,7 @@
   // 필터 목록 — 촬영 화면 왼쪽 필터 버튼에서 고름
   BoothFilter.PRESETS = [
     { id: 'fisheye', name: 'Fisheye', fx: { ...BoothFilter.DEFAULTS } },
-    { id: 'wide',    name: 'Wide',    fx: { ...BoothFilter.DEFAULTS, fisheye: -0.5, zoom: 1.3, chroma: 0.01 } },
+    { id: 'wide',    name: 'Wide',    fx: { ...BoothFilter.DEFAULTS, fisheye: 0, stretch: 0.4, zoom: 1.34, chroma: 0.012 } },
   ];
 
   window.BoothFilter = BoothFilter;
