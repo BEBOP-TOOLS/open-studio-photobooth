@@ -31,6 +31,7 @@
   <div class="actions">
     <button class="primary" id="shareStory" disabled>인스타그램 스토리에 공유</button>
     <button id="savePhoto" disabled>사진 저장</button>
+    <button class="ghost" id="addArchive" hidden>아카이브에 추가</button>
   </div>
   <p class="hint" id="hint">공유 버튼을 누르고 목록에서 <b>Instagram</b>을 고른 뒤 <b>스토리</b>를 선택하세요.</p>
   <div class="story-preview" id="storyPreview">
@@ -53,7 +54,7 @@
 
   const id = new URLSearchParams(location.search).get('id');
   const { data: p, error } = id
-    ? await db.from('photos').select('*').eq('id', id).maybeSingle()
+    ? await db.rpc('get_photo', { p_id: id }).maybeSingle()
     : { data: null, error: null };
   if (error || !p) {
     $('who').textContent = '사진을 찾을 수 없어요';
@@ -66,6 +67,17 @@
   const src = photoUrl(p.path);
   $('photo').src = src;
   $('who').innerHTML = esc(p.name) + (p.affiliation ? `<span>${esc(p.affiliation)}</span>` : '');
+  const addBtn = $('addArchive');
+  addBtn.hidden = false;
+  if (p.archived) { addBtn.textContent = '✓ 아카이브에 올라가 있어요'; addBtn.disabled = true; }
+  addBtn.onclick = async () => {
+    addBtn.disabled = true;
+    addBtn.textContent = '추가하는 중…';
+    const { error } = await db.rpc('archive_photo', { p_id: p.id });
+    if (error) { addBtn.disabled = false; addBtn.textContent = '다시 시도'; return; }
+    addBtn.textContent = '✓ 아카이브에 추가됐어요';
+  };
+
   const fileBase = `${(C.EVENT_TITLE || 'photo').replace(/\s+/g, '-').toLowerCase()}-${p.id.slice(0, 8)}`;
 
   // 원본 사진 + 스토리용(1080×1920) 이미지를 미리 준비 — 공유는 탭 직후 바로 호출해야 함

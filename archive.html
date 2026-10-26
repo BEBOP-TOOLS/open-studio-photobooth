@@ -95,7 +95,7 @@
   document.getElementById('lb').onclick = e => e.currentTarget.classList.remove('open');
   const updateCount = () => document.getElementById('count').textContent = total ? `${total} portraits` : '';
 
-  const { data, error } = await db.from('photos').select('*').order('created_at', { ascending: false }).limit(1000);
+  const { data, error } = await db.from('photos').select('*').eq('archived', true).order('created_at', { ascending: false }).limit(1000);
   if (error) {
     grid.outerHTML = `<p class="empty">불러오지 못했어요: ${esc(error.message)}</p>`;
     return;
@@ -118,7 +118,7 @@
   addEventListener('hashchange', focusHash);
 
   db.channel('photos-feed')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'photos' }, ({ new: p }) => {
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'photos', filter: 'archived=eq.true' }, ({ new: p }) => {
       document.getElementById('empty')?.remove();
       const el = card(p, true);
       if (el) { grid.prepend(el); updateCount(); focusHash(); }

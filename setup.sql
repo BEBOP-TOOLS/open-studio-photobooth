@@ -40,3 +40,5 @@ begin
     alter publication supabase_realtime add table public.photos;
   end if;
 end $$;
+
+-- 이후 migrate-01-archive-optin.sql 도 이어서 실행하세요

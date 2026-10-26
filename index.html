@@ -163,9 +163,9 @@
     <section class="step" data-step="done">
       <h1 id="doneTitle">고마워요!</h1>
       <div class="qr" id="qr"></div>
-      <p>폰 카메라로 QR을 찍으면 사진을 받고<br>인스타그램 스토리에 공유할 수 있어요.</p>
+      <button id="addArchive" style="width:220px;padding:12px 0">아카이브 추가</button>
+      <p>폰 카메라로 QR을 찍으면 사진을 받고<br>인스타그램 스토리에 공유할 수 있어요.<br>아카이브 추가를 누르면 전시 아카이브에도 올라가요.</p>
       <div class="row">
-        <button id="viewArchive">아카이브에서 보기</button>
         <button class="primary" id="restart">처음으로</button>
       </div>
       <p id="restartIn" style="font-size:14px"></p>
@@ -348,6 +348,8 @@
     qr.make();
     $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
     $('doneTitle').textContent = `고마워요, ${name}님!`;
+    delete $('addArchive').dataset.done;
+    $('addArchive').textContent = '아카이브 추가';
     go('done');
     let left = 90;
     $('restartIn').textContent = `${left}초 뒤 처음 화면으로 돌아가요`;
@@ -375,7 +377,17 @@
     a.click();
   };
   $('restart').onclick = reset;
-  $('viewArchive').onclick = () => window.open('archive.html#' + savedId, 'archive');
+  $('addArchive').onclick = async () => {
+    const b = $('addArchive');
+    if (b.dataset.done) { window.open('archive.html#' + savedId, 'archive'); return; }
+    b.disabled = true;
+    b.textContent = '추가하는 중…';
+    const { error } = await db.rpc('archive_photo', { p_id: savedId });
+    b.disabled = false;
+    if (error) { b.textContent = '다시 시도'; return; }
+    b.dataset.done = '1';
+    b.textContent = '✓ 추가됨 · 아카이브 보기';
+  };
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => go(b.dataset.back));
 
   document.addEventListener('keydown', e => {
