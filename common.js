@@ -19,27 +19,21 @@
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  // 원을 따라 천천히 도는 행사 텍스트 (SVG). container는 position: relative 인 정사각형 요소
+  // 사진 원을 따라 놓이는 행사 텍스트 (SVG). container는 position: relative 인 정사각형 요소
   function ringText(container) {
     const r = 1000 * C.RING_RADIUS;
-    const unit = C.RING_TEXT + '\u2003•\u2003';
-    const text = unit.repeat(C.RING_REPEAT);
-    const len = (2 * Math.PI * r).toFixed(1);
+    // 반시계 방향 원 경로 → 아래쪽에서도 글자가 바로 읽히고, 글자는 원 안쪽을 향함
+    const offset = ((360 - C.RING_ANGLE) % 360) / 360 * 100;
     const id = 'ring' + Math.random().toString(36).slice(2, 8);
     container.insertAdjacentHTML('beforeend', `
       <svg class="ring-text" viewBox="0 0 1000 1000" aria-hidden="true"
-           style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
-                  animation:ring-spin ${C.RING_SECONDS}s linear infinite">
-        <defs><path id="${id}" d="M 500 ${500 - r} a ${r} ${r} 0 1 1 0 ${2 * r} a ${r} ${r} 0 1 1 0 ${-2 * r}"/></defs>
-        <text fill="#fff" fill-opacity="0.6" font-size="26" font-weight="600"
-              font-family="Pretendard, -apple-system, sans-serif">
-          <textPath href="#${id}" textLength="${len}" lengthAdjust="spacing">${esc(text)}</textPath>
+           style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+        <defs><path id="${id}" d="M 500 ${500 - r} a ${r} ${r} 0 1 0 0 ${2 * r} a ${r} ${r} 0 1 0 0 ${-2 * r}"/></defs>
+        <text fill="#fff" fill-opacity="0.6" font-size="24" font-weight="600" letter-spacing="4"
+              font-family="Pretendard, -apple-system, sans-serif" text-anchor="middle">
+          <textPath href="#${id}" startOffset="${offset}%">${esc(C.RING_TEXT)}</textPath>
         </text>
       </svg>`);
-    if (!document.getElementById('ring-spin-style')) {
-      document.head.insertAdjacentHTML('beforeend',
-        '<style id="ring-spin-style">@keyframes ring-spin { to { transform: rotate(360deg); } }</style>');
-    }
   }
 
   window.Booth = { C, db, photoUrl, shareUrl, esc, ringText };
