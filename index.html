@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Booth</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { overflow: hidden; user-select: none; }
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 48px;
+    padding: 5vh 56px;
+    align-items: center;
+  }
+  .stage {
+    position: relative;
+    height: 90vh;
+    aspect-ratio: 4 / 5;
+    justify-self: end;
+    max-width: 100%;
+  }
+  .stage canvas { width: 100%; height: 100%; display: block; }
+  .count {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: 26vh; font-weight: 700; color: #fff;
+    text-shadow: 0 0 40px rgba(0,0,0,.25);
+    pointer-events: none;
+  }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  .flash.on { animation: flash .5s ease-out; }
+  @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+  .camera-msg {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    text-align: center; color: var(--muted); padding: 24px; line-height: 1.6;
+  }
+
+  .panel { display: flex; flex-direction: column; gap: 28px; }
+  .panel h1 { font-size: 40px; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+  .panel p { margin: 0; color: var(--muted); font-size: 17px; line-height: 1.6; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row button { flex: 1; }
+  .step { display: none; flex-direction: column; gap: 28px; }
+  .step.active { display: flex; }
+
+  .shutter {
+    width: 120px; height: 120px; padding: 0;
+    border-radius: 50%; border: 3px solid var(--fg);
+    background: var(--bg); position: relative;
+  }
+  .shutter::after {
+    content: ''; position: absolute; inset: 8px; border-radius: 50%;
+    background: var(--fg); transition: inset .15s;
+  }
+  .shutter:hover::after { inset: 12px; }
+  kbd {
+    font: inherit; font-size: 13px; border: 1px solid var(--line);
+    border-radius: 6px; padding: 2px 8px; color: var(--muted);
+  }
+  .qr { width: 220px; height: 220px; background: #fff; padding: 12px; border-radius: 12px; }
+  .qr svg, .qr img { width: 100%; height: 100%; display: block; }
+  .err { color: var(--danger) !important; }
+
+  /* 설정 */
+  .gear {
+    position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; padding: 0;
+    border-color: transparent; color: var(--muted); opacity: .35; font-size: 20px;
+  }
+  .gear:hover { opacity: 1; }
+  .settings {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 340px;
+    background: var(--panel); border-left: 1px solid var(--line);
+    padding: 24px; overflow-y: auto; transform: translateX(100%);
+    transition: transform .25s; z-index: 10; font-size: 14px;
+  }
+  .settings.open { transform: none; }
+  .settings h2 { font-size: 16px; margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; }
+  .settings label { display: block; margin-bottom: 14px; }
+  .settings .lab { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .settings .lab span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .settings input[type=range] { width: 100%; }
+  .settings select { width: 100%; font: inherit; padding: 6px; }
+  .settings button { padding: 8px 14px; font-size: 14px; }
+  .settings a { color: var(--fg); }
+  .settings hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; padding: 24px; gap: 24px; overflow-y: auto; height: auto; }
+    body { overflow: auto; }
+    .stage { height: 60vh; justify-self: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <canvas id="view"></canvas>
+    <div class="camera-msg" id="cameraMsg">카메라를 켜는 중…</div>
+    <div class="count" id="count"></div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <div class="panel">
+    <div class="eyebrow" id="eventTitle"></div>
+
+    <section class="step active" data-step="live">
+      <h1>버튼을 눌러<br>사진을 찍어요</h1>
+      <button class="shutter" id="shutter" aria-label="촬영"></button>
+      <p><kbd>Space</kbd>를 눌러도 촬영돼요. 3초 뒤에 찍혀요.</p>
+    </section>
+
+    <section class="step" data-step="review">
+      <h1>이 사진으로<br>할까요?</h1>
+      <div class="row">
+        <button id="retake">다시 찍기</button>
+        <button class="primary" id="accept">좋아요</button>
+      </div>
+    </section>
+
+    <section class="step" data-step="name">
+      <h1>이름을<br>알려주세요</h1>
+      <input type="text" id="name" maxlength="40" autocomplete="off" placeholder="이름">
+      <div class="row">
+        <button class="ghost" data-back="review">이전</button>
+        <button class="primary" id="nameNext" disabled>다음</button>
+      </div>
+    </section>
+
+    <section class="step" data-step="affil">
+      <h1>소속이 있나요?</h1>
+      <input type="text" id="affil" maxlength="60" autocomplete="off" placeholder="소속">
+      <p>없으면 건너뛰어도 괜찮아요.</p>
+      <div class="row">
+        <button id="affilSkip">건너뛰기</button>
+        <button class="primary" id="affilDone">완료</button>
+      </div>
+    </section>
+
+    <section class="step" data-step="uploading">
+      <h1>저장하는 중…</h1>
+    </section>
+
+    <section class="step" data-step="error">
+      <h1>저장하지 못했어요</h1>
+      <p class="err" id="errMsg"></p>
+      <div class="row">
+        <button id="giveUp">처음으로</button>
+        <button class="primary" id="retry">다시 시도</button>
+      </div>
+    </section>
+
+    <section class="step" data-step="done">
+      <h1 id="doneTitle">고마워요!</h1>
+      <div class="qr" id="qr"></div>
+      <p>폰 카메라로 QR을 찍으면 사진을 받고<br>인스타그램 스토리에 공유할 수 있어요.</p>
+      <div class="row">
+        <button class="primary" id="restart">처음으로</button>
+      </div>
+      <p id="restartIn" style="font-size:14px"></p>
+    </section>
+  </div>
+</div>
+
+<button class="gear" id="gear" title="효과 설정 (S)">⚙</button>
+<aside class="settings" id="settings">
+  <h2>효과 설정 <button id="closeSettings">닫기</button></h2>
+  <div id="sliders"></div>
+  <label><div class="lab"><span>테두리 색</span></div><input type="color" id="edgeColor"></label>
+  <label><input type="checkbox" id="mirror"> 좌우 반전 (거울처럼)</label>
+  <hr>
+  <label><div class="lab"><span>카메라</span></div><select id="camSelect"></select></label>
+  <hr>
+  <div class="row">
+    <button id="resetFx">기본값으로</button>
+    <button id="copyFx">설정값 복사</button>
+  </div>
+  <hr>
+  <p><a href="archive.html" target="_blank">아카이브 열기 ↗</a></p>
+  <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
+</aside>
+
+<script src="config.js"></script>
+<script src="lib/supabase.min.js"></script>
+<script src="lib/qrcode.min.js"></script>
+<script src="common.js"></script>
+<script src="filter.js"></script>
+<script>
+(function () {
+  const { C, db, shareUrl } = window.Booth;
+  const $ = id => document.getElementById(id);
+  const FX_KEY = 'booth.fx.v1', CAM_KEY = 'booth.cam';
+
+  const canvas = $('view');
+  canvas.width = C.OUTPUT_W;
+  canvas.height = C.OUTPUT_H;
+  const filter = new BoothFilter(canvas);
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true;
+
+  $('eventTitle').textContent = [C.EVENT_TITLE, C.EVENT_SUB].filter(Boolean).join(' · ');
+
+  // ---------- 효과 설정 ----------
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  let fx = { ...BoothFilter.DEFAULTS };
+  try { Object.assign(fx, JSON.parse(store.get(FX_KEY) || '{}')); } catch {}
+  const saveFx = () => store.set(FX_KEY, JSON.stringify(fx));
+
+  function buildSliders() {
+    const box = $('sliders');
+    box.innerHTML = '';
+    for (const p of BoothFilter.PARAMS) {
+      const l = document.createElement('label');
+      l.innerHTML = `<div class="lab"><span>${p.label}</span><span></span></div>
+        <input type="range" min="${p.min}" max="${p.max}" step="${p.step}">`;
+      const input = l.querySelector('input'), out = l.querySelector('.lab span:last-child');
+      input.value = fx[p.key];
+      out.textContent = fx[p.key];
+      input.oninput = () => { fx[p.key] = +input.value; out.textContent = input.value; saveFx(); };
+      box.appendChild(l);
+    }
+    $('edgeColor').value = fx.edgeColor;
+    $('mirror').checked = fx.mirror;
+  }
+  $('edgeColor').oninput = e => { fx.edgeColor = e.target.value; saveFx(); };
+  $('mirror').onchange = e => { fx.mirror = e.target.checked; saveFx(); };
+  $('resetFx').onclick = () => { fx = { ...BoothFilter.DEFAULTS }; saveFx(); buildSliders(); };
+  $('copyFx').onclick = () => navigator.clipboard.writeText(JSON.stringify(fx, null, 2));
+  buildSliders();
+
+  const toggleSettings = open => $('settings').classList.toggle('open', open);
+  $('gear').onclick = () => toggleSettings(true);
+  $('closeSettings').onclick = () => toggleSettings(false);
+
+  // ---------- 카메라 ----------
+  let stream;
+  async function startCamera(deviceId) {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          width: { ideal: 1920 }, height: { ideal: 1080 },
+        },
+      });
+    } catch (e) {
+      $('cameraMsg').textContent = '카메라를 켤 수 없어요. 브라우저 주소창에서 카메라 권한을 허용해 주세요. (' + e.name + ')';
+      return;
+    }
+    video.srcObject = stream;
+    await video.play();
+    $('cameraMsg').style.display = 'none';
+
+    const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const current = stream.getVideoTracks()[0].getSettings().deviceId;
+    $('camSelect').innerHTML = cams.map((c, i) =>
+      `<option value="${c.deviceId}" ${c.deviceId === current ? 'selected' : ''}>${Booth.esc(c.label || '카메라 ' + (i + 1))}</option>`
+    ).join('');
+  }
+  $('camSelect').onchange = e => { store.set(CAM_KEY, e.target.value); startCamera(e.target.value); };
+  startCamera(store.get(CAM_KEY));
+
+  let frozen = false;
+  (function loop(t) {
+    if (!frozen) filter.render(video, fx, t / 1000);
+    requestAnimationFrame(loop);
+  })(0);
+
+  // ---------- 흐름 ----------
+  let state = 'live', photoBlob = null, savedId = null, counting = false;
+  let restartTimer = null, idleTimer = null;
+
+  function go(next) {
+    state = next;
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', s.dataset.step === next));
+    frozen = next !== 'live';
+    clearInterval(restartTimer);
+    clearTimeout(idleTimer);
+    if (['review', 'name', 'affil', 'error'].includes(next)) idleTimer = setTimeout(reset, 120000);
+    if (next === 'name') setTimeout(() => $('name').focus(), 50);
+    if (next === 'affil') setTimeout(() => $('affil').focus(), 50);
+  }
+
+  function reset() {
+    photoBlob = null; savedId = null;
+    $('name').value = ''; $('affil').value = '';
+    $('nameNext').disabled = true;
+    go('live');
+  }
+
+  function capture() {
+    if (state !== 'live' || counting || !video.videoWidth) return;
+    counting = true;
+    let n = 3;
+    $('count').textContent = n;
+    const tick = setInterval(() => {
+      n--;
+      if (n > 0) { $('count').textContent = n; return; }
+      clearInterval(tick);
+      $('count').textContent = '';
+      filter.render(video, fx, performance.now() / 1000);
+      frozen = true;
+      const f = $('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+      canvas.toBlob(b => { photoBlob = b; counting = false; go('review'); }, 'image/jpeg', 0.9);
+    }, 1000);
+  }
+
+  async function upload() {
+    go('uploading');
+    const name = $('name').value.trim();
+    const affiliation = $('affil').value.trim() || null;
+    const id = crypto.randomUUID();
+    const day = new Date().toISOString().slice(0, 10);
+    const path = `${day}/${id}.jpg`;
+    try {
+      const up = await db.storage.from(C.BUCKET).upload(path, photoBlob, { contentType: 'image/jpeg' });
+      if (up.error) throw up.error;
+      const ins = await db.from('photos').insert({ id, name, affiliation, path });
+      if (ins.error) throw ins.error;
+    } catch (e) {
+      $('errMsg').textContent = e.message || String(e);
+      go('error');
+      return;
+    }
+    savedId = id;
+    showDone(name);
+  }
+
+  function showDone(name) {
+    const qr = qrcode(0, 'M');
+    qr.addData(shareUrl(savedId));
+    qr.make();
+    $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    $('doneTitle').textContent = `고마워요, ${name}님!`;
+    go('done');
+    let left = 90;
+    $('restartIn').textContent = `${left}초 뒤 처음 화면으로 돌아가요`;
+    restartTimer = setInterval(() => {
+      left--;
+      $('restartIn').textContent = `${left}초 뒤 처음 화면으로 돌아가요`;
+      if (left <= 0) reset();
+    }, 1000);
+  }
+
+  $('shutter').onclick = capture;
+  $('retake').onclick = reset;
+  $('accept').onclick = () => go('name');
+  $('name').oninput = e => { $('nameNext').disabled = !e.target.value.trim(); };
+  $('nameNext').onclick = () => { if ($('name').value.trim()) go('affil'); };
+  $('affilSkip').onclick = () => { $('affil').value = ''; upload(); };
+  $('affilDone').onclick = upload;
+  $('retry').onclick = upload;
+  $('giveUp').onclick = reset;
+  $('restart').onclick = reset;
+  document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => go(b.dataset.back));
+
+  document.addEventListener('keydown', e => {
+    const typing = e.target.tagName === 'INPUT' && e.target.type === 'text';
+    if (e.isComposing) return;
+    if (typing) {
+      if (e.key === 'Enter') {
+        if (state === 'name') $('nameNext').click();
+        else if (state === 'affil') upload();
+      }
+      return;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (state === 'live') capture();
+      else if (state === 'review') go('name');
+      else if (state === 'done') reset();
+    } else if (e.key === 'Escape') {
+      if ($('settings').classList.contains('open')) toggleSettings(false);
+      else if (state === 'review') reset();
+    } else if (e.key === 's' || e.key === 'S' || e.key === 'ㄴ') {
+      toggleSettings(!$('settings').classList.contains('open'));
+    } else if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+})();
+</script>
+</body>
+</html>

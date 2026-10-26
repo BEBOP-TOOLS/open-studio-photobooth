@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archive</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  header {
+    padding: 40px 32px 24px;
+    display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { margin: 6px 0 0; font-size: 44px; letter-spacing: -0.02em; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 24px 16px;
+    padding: 0 32px 64px;
+  }
+  figure { margin: 0; cursor: zoom-in; }
+  figure img {
+    width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+    background: var(--line);
+  }
+  figcaption { margin-top: 8px; font-size: 15px; line-height: 1.4; }
+  figcaption b { font-weight: 600; }
+  figcaption span { color: var(--muted); margin-left: 6px; }
+  figure.new { animation: pop .6s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .empty { padding: 32px; color: var(--muted); }
+
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(242,241,238,.96);
+    display: none; place-items: center; z-index: 5; cursor: zoom-out; padding: 24px;
+  }
+  .lightbox.open { display: grid; }
+  .lightbox img { max-height: 82vh; max-width: 100%; display: block; }
+  .lightbox p { text-align: center; font-size: 20px; margin: 16px 0 0; }
+  .lightbox p span { color: var(--muted); margin-left: 8px; }
+
+  @media (max-width: 600px) {
+    header { padding: 24px 16px 16px; }
+    header h1 { font-size: 32px; }
+    .grid { grid-template-columns: repeat(2, 1fr); padding: 0 16px 48px; gap: 16px 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="eyebrow" id="sub"></div>
+    <h1 id="title">Archive</h1>
+  </div>
+  <div class="count" id="count"></div>
+</header>
+<main class="grid" id="grid"></main>
+<div class="lightbox" id="lb"><div><img id="lbImg" alt=""><p id="lbCap"></p></div></div>
+
+<script src="config.js"></script>
+<script src="lib/supabase.min.js"></script>
+<script src="common.js"></script>
+<script>
+(async function () {
+  const { C, db, photoUrl, esc } = window.Booth;
+  const grid = document.getElementById('grid');
+  document.getElementById('title').textContent = C.EVENT_TITLE + ' Archive';
+  document.getElementById('sub').textContent = C.EVENT_SUB || '';
+  const seen = new Set();
+  let total = 0;
+
+  function card(p, isNew) {
+    if (seen.has(p.id)) return null;
+    seen.add(p.id);
+    total++;
+    const f = document.createElement('figure');
+    if (isNew) f.className = 'new';
+    const src = photoUrl(p.path);
+    f.innerHTML = `<img loading="lazy" src="${esc(src)}" alt="${esc(p.name)}">
+      <figcaption><b>${esc(p.name)}</b>${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}</figcaption>`;
+    f.onclick = () => {
+      document.getElementById('lbImg').src = src;
+      document.getElementById('lbCap').innerHTML = `${esc(p.name)}${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}`;
+      document.getElementById('lb').classList.add('open');
+    };
+    return f;
+  }
+  document.getElementById('lb').onclick = e => e.currentTarget.classList.remove('open');
+  const updateCount = () => document.getElementById('count').textContent = total ? `${total} portraits` : '';
+
+  const { data, error } = await db.from('photos').select('*').order('created_at', { ascending: false }).limit(1000);
+  if (error) {
+    grid.outerHTML = `<p class="empty">불러오지 못했어요: ${esc(error.message)}</p>`;
+    return;
+  }
+  if (!data.length) grid.insertAdjacentHTML('beforebegin', '<p class="empty" id="empty">아직 사진이 없어요.</p>');
+  for (const p of data) { const el = card(p); if (el) grid.appendChild(el); }
+  updateCount();
+
+  db.channel('photos-feed')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'photos' }, ({ new: p }) => {
+      document.getElementById('empty')?.remove();
+      const el = card(p, true);
+      if (el) { grid.prepend(el); updateCount(); }
+    })
+    .subscribe();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Photo</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main {
+    max-width: 480px; margin: 0 auto;
+    padding: 32px 16px calc(32px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; background: var(--line); }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  h1 span { color: var(--muted); font-weight: 500; font-size: 18px; margin-left: 8px; }
+  .actions { display: flex; flex-direction: column; gap: 10px; }
+  .actions button, .actions a { width: 100%; text-align: center; }
+  .hint { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0; }
+  a.link { color: var(--muted); font-size: 14px; }
+  .story-preview { display: none; }
+  .story-preview.show { display: block; }
+  .story-preview img { width: 100%; display: block; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow" id="sub"></div>
+  <img class="photo" id="photo" alt="">
+  <h1 id="who"></h1>
+  <div class="actions">
+    <button class="primary" id="shareStory" disabled>인스타그램 스토리에 공유</button>
+    <button id="savePhoto" disabled>사진 저장</button>
+  </div>
+  <p class="hint" id="hint">공유 버튼을 누르고 목록에서 <b>Instagram</b>을 고른 뒤 <b>스토리</b>를 선택하세요.</p>
+  <div class="story-preview" id="storyPreview">
+    <p class="hint">공유가 안 되면 아래 이미지를 길게 눌러 저장한 뒤, 인스타그램 스토리에서 올려주세요.</p>
+    <img id="storyImg" alt="스토리 이미지">
+  </div>
+  <a class="link" href="archive.html">전체 아카이브 보기 →</a>
+</main>
+
+<script src="config.js"></script>
+<script src="lib/supabase.min.js"></script>
+<script src="common.js"></script>
+<script>
+(async function () {
+  const { C, db, photoUrl, esc } = window.Booth;
+  const $ = id => document.getElementById(id);
+  const eventLine = [C.EVENT_TITLE, C.EVENT_SUB].filter(Boolean).join(' · ');
+  $('sub').textContent = eventLine;
+
+  const id = new URLSearchParams(location.search).get('id');
+  const { data: p, error } = id
+    ? await db.from('photos').select('*').eq('id', id).maybeSingle()
+    : { data: null, error: null };
+  if (error || !p) {
+    $('who').textContent = '사진을 찾을 수 없어요';
+    $('photo').remove();
+    document.querySelector('.actions').remove();
+    $('hint').remove();
+    return;
+  }
+
+  const src = photoUrl(p.path);
+  $('photo').src = src;
+  $('who').innerHTML = esc(p.name) + (p.affiliation ? `<span>${esc(p.affiliation)}</span>` : '');
+  const fileBase = `${(C.EVENT_TITLE || 'photo').replace(/\s+/g, '-').toLowerCase()}-${p.id.slice(0, 8)}`;
+
+  // 원본 사진 + 스토리용(1080×1920) 이미지를 미리 준비 — 공유는 탭 직후 바로 호출해야 함
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = src;
+  await img.decode();
+  const photoBlob = await (await fetch(src)).blob();
+  const photoFile = new File([photoBlob], fileBase + '.jpg', { type: 'image/jpeg' });
+
+  try { await document.fonts.load('700 72px Pretendard'); await document.fonts.load('500 40px Pretendard'); } catch {}
+  const W = 1080, H = 1920;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const bg = css.getPropertyValue('--bg').trim() || '#f2f1ee';
+  const fg = css.getPropertyValue('--fg').trim() || '#141414';
+  const muted = css.getPropertyValue('--muted').trim() || '#8a8780';
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const pw = 880, ph = pw * 5 / 4, px = (W - pw) / 2, py = 300;
+  g.drawImage(img, px, py, pw, ph);
+  g.textAlign = 'center';
+  g.fillStyle = muted;
+  g.font = '600 34px Pretendard, sans-serif';
+  g.fillText(eventLine.toUpperCase().split('').join(' '), W / 2, 220);
+  g.fillStyle = fg;
+  g.font = '700 72px Pretendard, sans-serif';
+  g.fillText(p.name, W / 2, py + ph + 140, pw);
+  if (p.affiliation) {
+    g.fillStyle = muted;
+    g.font = '500 40px Pretendard, sans-serif';
+    g.fillText(p.affiliation, W / 2, py + ph + 210, pw);
+  }
+  const storyBlob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+  const storyFile = new File([storyBlob], fileBase + '-story.jpg', { type: 'image/jpeg' });
+  $('storyImg').src = URL.createObjectURL(storyBlob);
+
+  const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [storyFile] }));
+
+  function download(file) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+  }
+
+  async function share(file) {
+    if (!canShareFiles) { download(file); $('storyPreview').classList.add('show'); return; }
+    try {
+      await navigator.share({ files: [file] });
+    } catch (e) {
+      if (e.name !== 'AbortError') $('storyPreview').classList.add('show');
+    }
+  }
+
+  $('shareStory').onclick = () => share(storyFile);
+  $('savePhoto').onclick = () => share(photoFile);
+  $('shareStory').disabled = $('savePhoto').disabled = false;
+  if (!canShareFiles) {
+    $('hint').textContent = '이 브라우저는 바로 공유를 지원하지 않아요. 이미지를 저장한 뒤 인스타그램 스토리에서 올려주세요.';
+    $('storyPreview').classList.add('show');
+  }
+})();
+</script>
+</body>
+</html>

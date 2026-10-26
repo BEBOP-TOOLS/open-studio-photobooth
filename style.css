@@ -1,0 +1,61 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+:root {
+  --bg: #f2f1ee;
+  --fg: #141414;
+  --muted: #8a8780;
+  --line: #d9d6cf;
+  --panel: #ffffff;
+  --accent: #141414;
+  --accent-fg: #ffffff;
+  --danger: #c4402f;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 17px;
+  font-weight: 600;
+  transition: transform .1s, opacity .2s;
+}
+button:active { transform: scale(.97); }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.ghost { border-color: transparent; color: var(--muted); }
+button:disabled { opacity: .4; cursor: default; }
+
+input[type=text] {
+  font: inherit;
+  width: 100%;
+  font-size: 32px;
+  font-weight: 600;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 2px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  outline: none;
+  text-align: center;
+}
+input[type=text]::placeholder { color: var(--line); }
+
+.eyebrow {
+  font-size: 13px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
