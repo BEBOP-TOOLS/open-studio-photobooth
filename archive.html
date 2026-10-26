@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261026230904">
+<link rel="stylesheet" href="style.css?v=20261026231035">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -125,9 +125,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261026230904"></script>
-<script src="lib/supabase.min.js?v=20261026230904"></script>
-<script src="common.js?v=20261026230904"></script>
+<script src="config.js?v=20261026231035"></script>
+<script src="lib/supabase.min.js?v=20261026231035"></script>
+<script src="common.js?v=20261026231035"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -145,7 +145,7 @@
   let W, H, D, SIZE, R, contentR = 0;
   function measure() {
     W = innerWidth; H = innerHeight;
-    D = W < 600 ? 104 : 165;           // 이웃한 원 중심 사이 거리
+    D = W < 600 ? 120 : 195;           // 이웃한 원 중심 사이 거리 (클수록 줌인)
     SIZE = D * 0.8;                    // 원 지름 (D 대비 비율이 작을수록 간격이 넓어짐)
     R = Math.min(W, H) * 0.5;          // 이 반경 밖으로 갈수록 작아짐
     for (const n of nodes) n.el.style.width = n.el.style.height = SIZE + 'px';
