@@ -169,7 +169,7 @@
 
   // 슬라이더 스키마 — 기본값은 여기서 조정
   BoothFilter.PARAMS = [
-    { key: 'fisheye',    label: 'Fisheye',        min: 0,    max: 0.9,  step: 0.01,  value: 0.9 },
+    { key: 'fisheye',    label: 'Fisheye (−오목 / +볼록)', min: -0.5, max: 1.0, step: 0.01, value: 0.9 },
     { key: 'zoom',       label: '줌',             min: 0.6,  max: 1.6,  step: 0.01,  value: 0.6 },
     { key: 'chroma',     label: '색수차',          min: 0,    max: 0.03, step: 0.001, value: 0.014 },
     { key: 'feather',    label: '페더 폭',         min: 0,    max: 1.0,  step: 0.01,  value: 0.06 },
@@ -185,6 +185,12 @@
     Object.fromEntries(BoothFilter.PARAMS.map(p => [p.key, p.value])),
     { edgeColor: '#000000', mirror: true }
   );
+
+  // 필터 목록 — 촬영 화면 왼쪽 필터 버튼에서 고름
+  BoothFilter.PRESETS = [
+    { id: 'fisheye', name: 'Fisheye', fx: { ...BoothFilter.DEFAULTS } },
+    { id: 'wide',    name: 'Wide',    fx: { ...BoothFilter.DEFAULTS, fisheye: -0.5, zoom: 1.3, chroma: 0.01 } },
+  ];
 
   window.BoothFilter = BoothFilter;
 })();

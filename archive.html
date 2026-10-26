@@ -4,28 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261026231202">
+<link rel="stylesheet" href="style.css?v=20261026232529">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
   /* 상단 오버레이 */
   .top {
     position: fixed; top: 0; left: 0; right: 0; z-index: 3;
-    padding: 20px 32px 48px; pointer-events: none;
-    background: linear-gradient(#000 0%, rgba(0,0,0,.85) 45%, transparent);
+    padding: 28px 24px 56px; pointer-events: none; text-align: center;
+    background: linear-gradient(#000 0%, rgba(0,0,0,.8) 40%, transparent);
   }
-  .top a, .top button { pointer-events: auto; }
-  .nav { display: flex; gap: 20px; font-size: 14px; font-weight: 600; }
-  .nav a { color: var(--muted); text-decoration: none; }
-  .nav a.on { color: var(--fg); }
-  .nav .admin-link { margin-left: auto; font-weight: 500; }
-  .head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-top: 24px; }
-  .head h1 { margin: 6px 0 0; font-size: 36px; letter-spacing: -0.02em; }
-  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .welcome { margin: 0; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: .14em; }
+
+  /* 촬영으로 돌아가기 (작은 셔터 모양) */
+  .bottom-fade {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 120px; z-index: 3; pointer-events: none;
+    background: linear-gradient(transparent, rgba(0,0,0,.85));
+  }
+  .back {
+    position: fixed; left: 50%; bottom: 24px; z-index: 3; transform: translateX(-50%);
+    width: 56px; height: 56px; border-radius: 50%; border: 3px solid #fff;
+  }
+  .back::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #fff; }
+  .back:hover::after { opacity: .85; }
+  .admin-link {
+    position: fixed; right: 20px; bottom: 20px; z-index: 3;
+    color: var(--muted); font-size: 12px; text-decoration: none; opacity: .4;
+  }
+  .admin-link:hover { opacity: 1; }
+
+  /* 형광 오렌지 원형 커서 (드래그 중엔 손 모양) */
+  .cursor {
+    position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none;
+    width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+    background: #ff5a00; mix-blend-mode: screen;
+    transition: width .2s, height .2s, margin .2s, opacity .15s;
+    opacity: 0;
+  }
+  .cursor.on { opacity: 1; }
+  .cursor.big { width: 72px; height: 72px; margin: -36px 0 0 -36px; }
+  @media (hover: none) { .cursor { display: none; } }
 
   /* 허니콤 스테이지 */
   .stage {
-    position: fixed; inset: 0; cursor: grab; touch-action: none; user-select: none;
+    position: fixed; inset: 0; cursor: none; touch-action: none; user-select: none;
     -webkit-user-select: none;
   }
   .stage.dragging { cursor: grabbing; }
@@ -57,10 +79,8 @@
   }
   .lightbox.open { display: grid; }
   .lightbox .inner { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .lightbox img {
-    width: min(72vh, calc(100vw - 48px)); aspect-ratio: 1 / 1; object-fit: cover;
-    border-radius: 50%; display: block;
-  }
+  .lightbox .photo-wrap { position: relative; width: min(72vh, calc(100vw - 48px)); aspect-ratio: 1 / 1; }
+  .lightbox img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
   .lightbox p { text-align: center; font-size: 20px; margin: 0; }
   .lightbox p span { color: var(--muted); margin-left: 8px; }
   .lightbox .del { display: none; padding: 8px 18px; font-size: 14px; border-color: var(--danger); color: var(--danger); }
@@ -82,32 +102,25 @@
   dialog .msg { color: var(--danger); font-size: 14px; min-height: 20px; margin: 4px 0 0; }
 
   @media (max-width: 600px) {
-    .top { padding: 16px 16px 40px; }
-    .head h1 { font-size: 26px; }
+    .top { padding: 20px 16px 40px; }
+    .welcome { font-size: 17px; }
   }
+  @media (hover: none) { .stage { cursor: auto; } }
 </style>
 </head>
 <body>
 <div class="stage" id="stage"></div>
 <div class="label" id="label"></div>
 
-<div class="top">
-  <nav class="nav">
-    <a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a>
-    <a href="#" class="admin-link" id="adminLink">관리자</a>
-  </nav>
-  <div class="head">
-    <div>
-      <div class="eyebrow" id="sub"></div>
-      <h1 id="title">Archive</h1>
-    </div>
-    <div class="count" id="count"></div>
-  </div>
-</div>
+<div class="top"><h1 class="welcome" id="welcome"></h1></div>
+<div class="bottom-fade"></div>
+<a class="back" href="index.html" aria-label="촬영으로 돌아가기" title="촬영으로 돌아가기"></a>
+<a href="#" class="admin-link" id="adminLink">관리자</a>
+<div class="cursor" id="cursor"></div>
 
 <div class="lightbox" id="lb">
   <div class="inner">
-    <img id="lbImg" alt="">
+    <div class="photo-wrap" id="lbWrap"><img id="lbImg" alt=""></div>
     <p id="lbCap"></p>
     <button class="del" id="lbDel" type="button">이 사진 삭제</button>
   </div>
@@ -126,15 +139,15 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261026231202"></script>
-<script src="lib/supabase.min.js?v=20261026231202"></script>
-<script src="common.js?v=20261026231202"></script>
+<script src="config.js?v=20261026232529"></script>
+<script src="lib/supabase.min.js?v=20261026232529"></script>
+<script src="common.js?v=20261026232529"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
   const $ = id => document.getElementById(id);
-  $('title').textContent = C.EVENT_TITLE + ' Archive';
-  $('sub').textContent = C.EVENT_SUB || '';
+  $('welcome').textContent = C.WELCOME_TEXT;
+  Booth.ringText($('lbWrap'));
 
   // ---------- 설정 ----------
   const SPIN_MIN = 6, SPIN_MAX = 16;  // 평소 회전 속도 (도/초)
@@ -179,7 +192,6 @@
       if (n.cx === undefined) { n.cx = n.tx; n.cy = n.ty; }
       contentR = Math.max(contentR, Math.hypot(n.tx, n.ty));
     });
-    $('count').textContent = nodes.length ? `${nodes.length} portraits` : '';
   }
 
   const stage = $('stage');
@@ -249,6 +261,7 @@
     drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy));
     if (drag.moved > 6 && !stage.classList.contains('dragging')) {
       stage.classList.add('dragging');
+      cursor.classList.remove('on');
       showLabel(null);
       nodes.forEach(n => n.hover = false);
     }
@@ -259,6 +272,7 @@
     if (performance.now() - drag.lt > 80) vel.x = vel.y = 0;   // 멈췄다가 놓으면 관성 없음
     drag = null;
     stage.classList.remove('dragging');
+    if (e.pointerType === 'mouse') cursor.classList.add('on');
     if (wasClick && target) {
       const n = nodes.find(n => n.el === target);
       if (n) openLightbox(n);
@@ -272,12 +286,29 @@
     pan.x -= e.deltaX; pan.y -= e.deltaY;
   }, { passive: false });
 
+  // ---------- 커서 ----------
+  const cursor = $('cursor');
+  const cur = { x: -100, y: -100, tx: -100, ty: -100 };
+  addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    cur.tx = e.clientX; cur.ty = e.clientY;
+    if (!cursor.classList.contains('on')) { cur.x = cur.tx; cur.y = cur.ty; }
+    const overStage = e.target === stage || e.target.closest?.('.cell');
+    cursor.classList.toggle('on', !!overStage && !stage.classList.contains('dragging'));
+    cursor.classList.toggle('big', !!e.target.closest?.('.cell'));
+  });
+  document.addEventListener('pointerleave', () => cursor.classList.remove('on'));
+
   // ---------- 매 프레임 ----------
   const smooth = (a, b, x) => { const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); };
   let last = performance.now();
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
+
+    const ck = 1 - Math.exp(-25 * dt);
+    cur.x += (cur.tx - cur.x) * ck; cur.y += (cur.ty - cur.y) * ck;
+    cursor.style.transform = `translate3d(${cur.x}px, ${cur.y}px, 0)`;
 
     if (!drag) {
       if (panTarget) {
