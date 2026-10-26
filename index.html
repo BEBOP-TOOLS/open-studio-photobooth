@@ -65,6 +65,12 @@
   .err { color: var(--danger) !important; }
 
   /* 설정 */
+  .nav {
+    position: fixed; top: 20px; left: 24px; display: flex; gap: 20px;
+    font-size: 14px; font-weight: 600; z-index: 2;
+  }
+  .nav a { color: var(--muted); text-decoration: none; }
+  .nav a.on { color: var(--fg); }
   .gear {
     position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; padding: 0;
     border-color: transparent; color: var(--muted); opacity: .35; font-size: 20px;
@@ -95,6 +101,7 @@
 </style>
 </head>
 <body>
+<nav class="nav"><a class="on" href="index.html">Photo Booth</a><a href="archive.html" target="archive">Archive ↗</a></nav>
 <div class="app">
   <div class="stage">
     <canvas id="view"></canvas>
@@ -150,6 +157,7 @@
         <button id="giveUp">처음으로</button>
         <button class="primary" id="retry">다시 시도</button>
       </div>
+      <button class="ghost" id="saveLocal">사진 내려받기</button>
     </section>
 
     <section class="step" data-step="done">
@@ -157,6 +165,7 @@
       <div class="qr" id="qr"></div>
       <p>폰 카메라로 QR을 찍으면 사진을 받고<br>인스타그램 스토리에 공유할 수 있어요.</p>
       <div class="row">
+        <button id="viewArchive">아카이브에서 보기</button>
         <button class="primary" id="restart">처음으로</button>
       </div>
       <p id="restartIn" style="font-size:14px"></p>
@@ -358,7 +367,15 @@
   $('affilDone').onclick = upload;
   $('retry').onclick = upload;
   $('giveUp').onclick = reset;
+  $('saveLocal').onclick = () => {
+    if (!photoBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(photoBlob);
+    a.download = `booth-${$('name').value.trim() || 'photo'}-${Date.now()}.jpg`;
+    a.click();
+  };
   $('restart').onclick = reset;
+  $('viewArchive').onclick = () => window.open('archive.html#' + savedId, 'archive');
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => go(b.dataset.back));
 
   document.addEventListener('keydown', e => {

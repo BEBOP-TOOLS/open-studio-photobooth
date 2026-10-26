@@ -6,8 +6,12 @@
 <title>Archive</title>
 <link rel="stylesheet" href="style.css">
 <style>
+  .nav { display: flex; gap: 20px; padding: 20px 32px 0; font-size: 14px; font-weight: 600; }
+  .nav a { color: var(--muted); text-decoration: none; }
+  .nav a.on { color: var(--fg); }
+  figure.hl img { outline: 3px solid var(--fg); outline-offset: 4px; }
   header {
-    padding: 40px 32px 24px;
+    padding: 28px 32px 24px;
     display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap;
   }
   header h1 { margin: 6px 0 0; font-size: 44px; letter-spacing: -0.02em; }
@@ -40,13 +44,15 @@
   .lightbox p span { color: var(--muted); margin-left: 8px; }
 
   @media (max-width: 600px) {
-    header { padding: 24px 16px 16px; }
+    header { padding: 20px 16px 16px; }
+    .nav { padding: 16px 16px 0; }
     header h1 { font-size: 32px; }
     .grid { grid-template-columns: repeat(2, 1fr); padding: 0 16px 48px; gap: 16px 10px; }
   }
 </style>
 </head>
 <body>
+<nav class="nav"><a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a></nav>
 <header>
   <div>
     <div class="eyebrow" id="sub"></div>
@@ -74,6 +80,7 @@
     seen.add(p.id);
     total++;
     const f = document.createElement('figure');
+    f.id = 'p-' + p.id;
     if (isNew) f.className = 'new';
     const src = photoUrl(p.path);
     f.innerHTML = `<img loading="lazy" src="${esc(src)}" alt="${esc(p.name)}">
@@ -97,11 +104,24 @@
   for (const p of data) { const el = card(p); if (el) grid.appendChild(el); }
   updateCount();
 
+  // archive.html#<id> 로 열면 해당 사진으로 스크롤
+  function focusHash() {
+    const id = location.hash.slice(1);
+    const el = id && document.getElementById('p-' + id);
+    if (!el) return false;
+    document.querySelectorAll('figure.hl').forEach(f => f.classList.remove('hl'));
+    el.classList.add('hl');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  }
+  focusHash();
+  addEventListener('hashchange', focusHash);
+
   db.channel('photos-feed')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'photos' }, ({ new: p }) => {
       document.getElementById('empty')?.remove();
       const el = card(p, true);
-      if (el) { grid.prepend(el); updateCount(); }
+      if (el) { grid.prepend(el); updateCount(); focusHash(); }
     })
     .subscribe();
 })();
