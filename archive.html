@@ -4,48 +4,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261026230122">
+<link rel="stylesheet" href="style.css?v=20261026230720">
 <style>
-  .nav { display: flex; gap: 20px; padding: 20px 32px 0; font-size: 14px; font-weight: 600; }
+  html, body { overflow: hidden; overscroll-behavior: none; }
+
+  /* 상단 오버레이 */
+  .top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 3;
+    padding: 20px 32px 48px; pointer-events: none;
+    background: linear-gradient(#000 0%, rgba(0,0,0,.85) 45%, transparent);
+  }
+  .top a, .top button { pointer-events: auto; }
+  .nav { display: flex; gap: 20px; font-size: 14px; font-weight: 600; }
   .nav a { color: var(--muted); text-decoration: none; }
   .nav a.on { color: var(--fg); }
-  figure.hl figcaption b { text-decoration: underline; text-underline-offset: 4px; }
-  figure.hl img { filter: brightness(1.15); }
-  header {
-    padding: 28px 32px 24px;
-    display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap;
-  }
-  header h1 { margin: 6px 0 0; font-size: 44px; letter-spacing: -0.02em; }
-  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 24px 16px;
-    padding: 0 32px 64px;
-  }
-  figure { margin: 0; cursor: zoom-in; }
-  figure img {
-    width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block;
-    background: var(--line);
-    will-change: transform;
-  }
-  figcaption { margin-top: 8px; font-size: 15px; line-height: 1.4; }
-  figcaption b { font-weight: 600; }
-  figcaption span { color: var(--muted); margin-left: 6px; }
-  figure.new { animation: pop .6s ease-out; }
-  @keyframes pop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-  .empty { padding: 32px; color: var(--muted); }
-
-  /* 관리자 */
   .nav .admin-link { margin-left: auto; font-weight: 500; }
-  figure { position: relative; }
-  .del {
-    display: none; position: absolute; top: 8px; right: 8px;
-    padding: 6px 12px; font-size: 13px; border-radius: 999px;
-    background: rgba(0,0,0,.7); color: #fff; border: 1px solid rgba(255,255,255,.5);
+  .head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-top: 24px; }
+  .head h1 { margin: 6px 0 0; font-size: 36px; letter-spacing: -0.02em; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* 허니콤 스테이지 */
+  .stage {
+    position: fixed; inset: 0; cursor: grab; touch-action: none; user-select: none;
+    -webkit-user-select: none;
   }
-  body.admin .del { display: block; }
-  .del:hover { background: var(--danger); border-color: var(--danger); }
+  .stage.dragging { cursor: grabbing; }
+  .cell {
+    position: absolute; left: 0; top: 0;
+    border-radius: 50%; overflow: hidden; background: #0d0d0d;
+    transform-origin: 50% 50%; will-change: transform;
+  }
+  .cell img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    pointer-events: none; -webkit-user-drag: none; will-change: transform;
+  }
+  .cell.hl { box-shadow: 0 0 0 3px #fff; }
+  .label {
+    position: fixed; left: 0; top: 0; z-index: 2; pointer-events: none;
+    font-size: 14px; white-space: nowrap; transform: translate(-50%, 0);
+    opacity: 0; transition: opacity .15s;
+    background: rgba(0,0,0,.75); padding: 4px 10px; border-radius: 999px;
+  }
+  .label.show { opacity: 1; }
+  .label span { color: var(--muted); margin-left: 6px; }
+  .empty { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); }
+
+  /* 크게 보기 */
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.94); z-index: 5;
+    display: none; place-items: center; cursor: zoom-out; padding: 24px;
+  }
+  .lightbox.open { display: grid; }
+  .lightbox .inner { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .lightbox img {
+    width: min(72vh, calc(100vw - 48px)); aspect-ratio: 1 / 1; object-fit: cover;
+    border-radius: 50%; display: block;
+  }
+  .lightbox p { text-align: center; font-size: 20px; margin: 0; }
+  .lightbox p span { color: var(--muted); margin-left: 8px; }
+  .lightbox .del { display: none; padding: 8px 18px; font-size: 14px; border-color: var(--danger); color: var(--danger); }
+  body.admin .lightbox .del { display: block; }
+
+  /* 관리자 로그인 */
   dialog {
     background: var(--panel); color: var(--fg); border: 1px solid var(--line);
     border-radius: 16px; padding: 28px; width: min(360px, calc(100vw - 32px));
@@ -60,33 +80,38 @@
   dialog .row button { flex: 1; padding: 12px; font-size: 15px; }
   dialog .msg { color: var(--danger); font-size: 14px; min-height: 20px; margin: 4px 0 0; }
 
-  .lightbox {
-    position: fixed; inset: 0; background: rgba(0,0,0,.94);
-    display: none; place-items: center; z-index: 5; cursor: zoom-out; padding: 24px;
-  }
-  .lightbox.open { display: grid; }
-  .lightbox img { max-height: 82vh; max-width: 100%; display: block; }
-  .lightbox p { text-align: center; font-size: 20px; margin: 16px 0 0; }
-  .lightbox p span { color: var(--muted); margin-left: 8px; }
-
   @media (max-width: 600px) {
-    header { padding: 20px 16px 16px; }
-    .nav { padding: 16px 16px 0; }
-    header h1 { font-size: 32px; }
-    .grid { grid-template-columns: repeat(2, 1fr); padding: 0 16px 48px; gap: 16px 10px; }
+    .top { padding: 16px 16px 40px; }
+    .head h1 { font-size: 26px; }
   }
 </style>
 </head>
 <body>
-<nav class="nav"><a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a><a href="#" class="admin-link" id="adminLink">관리자</a></nav>
-<header>
-  <div>
-    <div class="eyebrow" id="sub"></div>
-    <h1 id="title">Archive</h1>
+<div class="stage" id="stage"></div>
+<div class="label" id="label"></div>
+
+<div class="top">
+  <nav class="nav">
+    <a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a>
+    <a href="#" class="admin-link" id="adminLink">관리자</a>
+  </nav>
+  <div class="head">
+    <div>
+      <div class="eyebrow" id="sub"></div>
+      <h1 id="title">Archive</h1>
+    </div>
+    <div class="count" id="count"></div>
   </div>
-  <div class="count" id="count"></div>
-</header>
-<main class="grid" id="grid"></main>
+</div>
+
+<div class="lightbox" id="lb">
+  <div class="inner">
+    <img id="lbImg" alt="">
+    <p id="lbCap"></p>
+    <button class="del" id="lbDel" type="button">이 사진 삭제</button>
+  </div>
+</div>
+
 <dialog id="loginDlg">
   <form method="dialog" id="loginForm">
     <h2>관리자 로그인</h2>
@@ -99,103 +124,237 @@
     </div>
   </form>
 </dialog>
-<div class="lightbox" id="lb"><div><img id="lbImg" alt=""><p id="lbCap"></p></div></div>
 
-<script src="config.js?v=20261026230122"></script>
-<script src="lib/supabase.min.js?v=20261026230122"></script>
-<script src="common.js?v=20261026230122"></script>
+<script src="config.js?v=20261026230720"></script>
+<script src="lib/supabase.min.js?v=20261026230720"></script>
+<script src="common.js?v=20261026230720"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
-  const grid = document.getElementById('grid');
-  document.getElementById('title').textContent = C.EVENT_TITLE + ' Archive';
-  document.getElementById('sub').textContent = C.EVENT_SUB || '';
-  const seen = new Set();
-  let total = 0;
+  const $ = id => document.getElementById(id);
+  $('title').textContent = C.EVENT_TITLE + ' Archive';
+  $('sub').textContent = C.EVENT_SUB || '';
 
-  // ---------- 회전: 사진마다 속도가 조금씩 다르고, 커서를 올리면 빨라짐 ----------
-  const spin = (() => {
-    const BASE_MIN = 6, BASE_MAX = 16;  // 평소 속도 (도/초)
-    const HOVER_MULT = 6;               // 커서를 올렸을 때 배수
-    const EASE = 3;                     // 속도 변화 부드러움 (클수록 빠르게 반응)
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const items = new Map();            // figure → state
-    const io = new IntersectionObserver(entries => {
-      for (const e of entries) { const st = items.get(e.target); if (st) st.visible = e.isIntersecting; }
-    }, { rootMargin: '200px' });
+  // ---------- 설정 ----------
+  const SPIN_MIN = 6, SPIN_MAX = 16;  // 평소 회전 속도 (도/초)
+  const HOVER_MULT = 6;               // 커서를 올렸을 때 배수
+  const IMG_CROP = 1.12;              // 원 안에서 사진 확대 (검은 테두리 덜 보이게)
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function add(fig) {
-      const st = {
-        img: fig.querySelector('img'),
-        angle: Math.random() * 360,
-        base: BASE_MIN + Math.random() * (BASE_MAX - BASE_MIN),
-        speed: 0, hover: false, visible: true,
-      };
-      st.speed = st.base;
-      fig.addEventListener('pointerenter', () => { st.hover = true; });
-      fig.addEventListener('pointerleave', () => { st.hover = false; });
-      items.set(fig, st);
-      io.observe(fig);
-      st.img.style.transform = `rotate(${st.angle}deg)`;
-    }
-    function remove(fig) { items.delete(fig); io.unobserve(fig); }
+  const nodes = [];                    // 최신 사진이 가운데
+  let W, H, D, SIZE, R, contentR = 0;
+  function measure() {
+    W = innerWidth; H = innerHeight;
+    D = W < 600 ? 96 : 150;            // 이웃한 원 중심 사이 거리
+    SIZE = D * 0.94;                   // 원 지름
+    R = Math.min(W, H) * 0.5;          // 이 반경 밖으로 갈수록 작아짐
+    for (const n of nodes) n.el.style.width = n.el.style.height = SIZE + 'px';
+    layout();
+  }
 
-    let last = performance.now();
-    function tick(now) {
-      const dt = Math.min((now - last) / 1000, 0.1);
-      last = now;
-      if (!reduce) {
-        const k = 1 - Math.exp(-EASE * dt);
-        for (const st of items.values()) {
-          const target = st.hover ? st.base * HOVER_MULT : st.base;
-          st.speed += (target - st.speed) * k;
-          st.angle = (st.angle + st.speed * dt) % 360;
-          if (st.visible) st.img.style.transform = `rotate(${st.angle}deg)`;
+  // ---------- 허니콤 배치 (가운데부터 나선형) ----------
+  const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  function hexSpiral(n) {
+    const out = [[0, 0]];
+    for (let k = 1; out.length < n; k++) {
+      let q = -k, r = k;
+      for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < k; j++) {
+          out.push([q, r]);
+          q += DIRS[i][0]; r += DIRS[i][1];
         }
       }
-      requestAnimationFrame(tick);
     }
-    requestAnimationFrame(tick);
-    return { add, remove };
-  })();
+    return out.slice(0, n);
+  }
 
-  function card(p, isNew) {
-    if (seen.has(p.id)) return null;
-    seen.add(p.id);
-    total++;
-    const f = document.createElement('figure');
-    f.id = 'p-' + p.id;
-    if (isNew) f.className = 'new';
-    const src = photoUrl(p.path);
-    f.innerHTML = `<img loading="lazy" src="${esc(src)}" alt="${esc(p.name)}">
-      <figcaption><b>${esc(p.name)}</b>${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}</figcaption>
-      <button class="del" type="button">삭제</button>`;
-    spin.add(f);
-    f.querySelector('.del').onclick = e => { e.stopPropagation(); removePhoto(p, f); };
-    f.onclick = () => {
-      document.getElementById('lbImg').src = src;
-      document.getElementById('lbCap').innerHTML = `${esc(p.name)}${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}`;
-      document.getElementById('lb').classList.add('open');
+  function layout() {
+    const cells = hexSpiral(nodes.length);
+    contentR = 0;
+    nodes.forEach((n, i) => {
+      const [q, r] = cells[i];
+      n.tx = D * (q + r / 2);
+      n.ty = D * (Math.sqrt(3) / 2) * r;
+      if (n.cx === undefined) { n.cx = n.tx; n.cy = n.ty; }
+      contentR = Math.max(contentR, Math.hypot(n.tx, n.ty));
+    });
+    $('count').textContent = nodes.length ? `${nodes.length} portraits` : '';
+  }
+
+  const stage = $('stage');
+  function addNode(p, atFront) {
+    if (nodes.some(n => n.p.id === p.id)) return null;
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.style.width = el.style.height = SIZE + 'px';
+    el.innerHTML = `<img src="${esc(photoUrl(p.path))}" alt="${esc(p.name)}" draggable="false">`;
+    const n = {
+      p, el, img: el.firstChild,
+      angle: Math.random() * 360,
+      base: SPIN_MIN + Math.random() * (SPIN_MAX - SPIN_MIN),
+      speed: 0, hover: false,
     };
-    return f;
+    n.speed = n.base;
+    el.addEventListener('pointerenter', () => { if (!drag) { n.hover = true; showLabel(n); } });
+    el.addEventListener('pointerleave', () => { n.hover = false; if (labelNode === n) showLabel(null); });
+    if (atFront) {
+      nodes.unshift(n);
+      n.cx = 0; n.cy = 0; n.pop = 0;   // 가운데에서 튀어나오듯 등장
+    } else {
+      nodes.push(n);
+    }
+    stage.appendChild(el);
+    return n;
   }
-  document.getElementById('lb').onclick = e => e.currentTarget.classList.remove('open');
-  const updateCount = () => document.getElementById('count').textContent = total ? `${total} portraits` : '';
+  function removeNode(id) {
+    const i = nodes.findIndex(n => n.p.id === id);
+    if (i < 0) return;
+    nodes[i].el.remove();
+    if (labelNode === nodes[i]) showLabel(null);
+    nodes.splice(i, 1);
+    layout();
+  }
 
-  function dropCard(id) {
-    const el = document.getElementById('p-' + id);
-    if (!el) return;
-    el.remove();
-    spin.remove(el);
-    seen.delete(id);
-    total--;
-    updateCount();
+  // ---------- 이름 라벨 ----------
+  let labelNode = null;
+  function showLabel(n) {
+    labelNode = n;
+    const l = $('label');
+    if (!n) { l.classList.remove('show'); return; }
+    l.innerHTML = esc(n.p.name) + (n.p.affiliation ? `<span>${esc(n.p.affiliation)}</span>` : '');
+    l.classList.add('show');
   }
+
+  // ---------- 드래그 (관성 포함) ----------
+  const pan = { x: 0, y: 0 }, vel = { x: 0, y: 0 };
+  let drag = null, panTarget = null;
+
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    try { stage.setPointerCapture(e.pointerId); } catch {}
+    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY,
+             lt: performance.now(), moved: 0, target: e.target.closest('.cell') };
+    vel.x = vel.y = 0;
+    panTarget = null;
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const now = performance.now(), dx = e.clientX - drag.lx, dy = e.clientY - drag.ly;
+    const dt = Math.max(now - drag.lt, 1) / 1000;
+    pan.x += dx; pan.y += dy;
+    vel.x = vel.x * 0.6 + (dx / dt) * 0.4;
+    vel.y = vel.y * 0.6 + (dy / dt) * 0.4;
+    drag.lx = e.clientX; drag.ly = e.clientY; drag.lt = now;
+    drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy));
+    if (drag.moved > 6 && !stage.classList.contains('dragging')) {
+      stage.classList.add('dragging');
+      showLabel(null);
+      nodes.forEach(n => n.hover = false);
+    }
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const wasClick = drag.moved <= 6, target = drag.target;
+    if (performance.now() - drag.lt > 80) vel.x = vel.y = 0;   // 멈췄다가 놓으면 관성 없음
+    drag = null;
+    stage.classList.remove('dragging');
+    if (wasClick && target) {
+      const n = nodes.find(n => n.el === target);
+      if (n) openLightbox(n);
+    }
+  }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    panTarget = null;
+    pan.x -= e.deltaX; pan.y -= e.deltaY;
+  }, { passive: false });
+
+  // ---------- 매 프레임 ----------
+  const smooth = (a, b, x) => { const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); };
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+
+    if (!drag) {
+      if (panTarget) {
+        const k = 1 - Math.exp(-6 * dt);
+        pan.x += (panTarget.x - pan.x) * k; pan.y += (panTarget.y - pan.y) * k;
+        if (Math.hypot(panTarget.x - pan.x, panTarget.y - pan.y) < 0.5) panTarget = null;
+      } else {
+        pan.x += vel.x * dt; pan.y += vel.y * dt;
+        const f = Math.exp(-4 * dt);
+        vel.x *= f; vel.y *= f;
+        // 사진들 바깥으로 너무 나가면 부드럽게 되돌림
+        const lim = contentR + D * 0.5, d = Math.hypot(pan.x, pan.y);
+        if (d > lim) {
+          const k = 1 - Math.exp(-8 * dt), s = lim / d;
+          pan.x += (pan.x * s - pan.x) * k; pan.y += (pan.y * s - pan.y) * k;
+        }
+      }
+    }
+
+    const lk = 1 - Math.exp(-6 * dt), sk = 1 - Math.exp(-3 * dt);
+    for (const n of nodes) {
+      n.cx += (n.tx - n.cx) * lk; n.cy += (n.ty - n.cy) * lk;
+      if (n.pop !== undefined) { n.pop += (1 - n.pop) * lk; if (n.pop > 0.999) delete n.pop; }
+
+      // 애플워치처럼: 화면 가운데는 크게, 가장자리로 갈수록 작고 촘촘하게
+      const sx = n.cx + pan.x, sy = n.cy + pan.y;
+      const t = Math.hypot(sx, sy) / R;
+      const scale = (1 - 0.7 * smooth(0.45, 1.5, t)) * (n.pop ?? 1);
+      const squeeze = 1 - 0.18 * smooth(0.6, 1.6, t);
+      const px = W / 2 + sx * squeeze, py = H / 2 + sy * squeeze;
+
+      const half = SIZE * scale / 2;
+      const visible = px + half > 0 && px - half < W && py + half > 0 && py - half < H && scale > 0.05;
+      if (!visible) { if (n.shown !== false) { n.el.style.visibility = 'hidden'; n.shown = false; } continue; }
+      if (n.shown === false) { n.el.style.visibility = ''; n.shown = true; }
+      n.el.style.transform = `translate3d(${px - SIZE / 2}px, ${py - SIZE / 2}px, 0) scale(${scale})`;
+
+      if (!reduceMotion) {
+        const target = n.hover ? n.base * HOVER_MULT : n.base;
+        n.speed += (target - n.speed) * sk;
+        n.angle = (n.angle + n.speed * dt) % 360;
+      }
+      n.img.style.transform = `rotate(${n.angle}deg) scale(${IMG_CROP})`;
+
+      if (labelNode === n) {
+        const l = $('label');
+        l.style.left = px + 'px';
+        l.style.top = (py + half + 8) + 'px';
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 크게 보기 ----------
+  let lbNode = null;
+  function openLightbox(n) {
+    lbNode = n;
+    $('lbImg').src = photoUrl(n.p.path);
+    $('lbCap').innerHTML = esc(n.p.name) + (n.p.affiliation ? `<span>${esc(n.p.affiliation)}</span>` : '');
+    $('lb').classList.add('open');
+  }
+  const closeLightbox = () => { $('lb').classList.remove('open'); lbNode = null; };
+  $('lb').onclick = closeLightbox;
+  addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+  // archive.html#<id> 로 열면 해당 사진으로 이동
+  function focusHash() {
+    const id = location.hash.slice(1);
+    const n = id && nodes.find(n => n.p.id === id);
+    if (!n) return false;
+    nodes.forEach(m => m.el.classList.toggle('hl', m === n));
+    panTarget = { x: -n.tx, y: -n.ty };
+    return true;
+  }
+  addEventListener('hashchange', focusHash);
 
   // ---------- 관리자 ----------
-  const dlg = document.getElementById('loginDlg');
-  const adminLink = document.getElementById('adminLink');
-
+  const dlg = $('loginDlg'), adminLink = $('adminLink');
   async function refreshAdmin() {
     const { data: { session } } = await db.auth.getSession();
     let ok = false;
@@ -204,75 +363,70 @@
     adminLink.textContent = session ? (ok ? '관리자 로그아웃' : '로그아웃 (권한 없음)') : '관리자';
     return { session, ok };
   }
-
   adminLink.onclick = async e => {
     e.preventDefault();
     const { session } = await refreshAdmin();
     if (session) { await db.auth.signOut(); refreshAdmin(); return; }
-    document.getElementById('loginMsg').textContent = '';
+    $('loginMsg').textContent = '';
     dlg.showModal();
   };
-  document.getElementById('loginCancel').onclick = () => dlg.close();
-  document.getElementById('loginForm').onsubmit = async e => {
+  $('loginCancel').onclick = () => dlg.close();
+  $('loginForm').onsubmit = async e => {
     e.preventDefault();
-    const msg = document.getElementById('loginMsg');
+    const msg = $('loginMsg');
     msg.textContent = '';
-    const { error } = await db.auth.signInWithPassword({
-      email: document.getElementById('email').value.trim(),
-      password: document.getElementById('pw').value,
-    });
+    const { error } = await db.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pw').value });
     if (error) { msg.textContent = '로그인 실패: ' + error.message; return; }
     const { ok } = await refreshAdmin();
     if (!ok) { msg.textContent = '관리자로 등록된 계정이 아니에요.'; return; }
-    document.getElementById('pw').value = '';
+    $('pw').value = '';
     dlg.close();
   };
-
-  async function removePhoto(p, el) {
-    if (!confirm(`"${p.name}" 사진을 삭제할까요?\n사진 파일과 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
-    const btn = el.querySelector('.del');
-    btn.disabled = true;
-    btn.textContent = '삭제 중…';
-    const fail = m => { alert('삭제하지 못했어요: ' + m); btn.disabled = false; btn.textContent = '삭제'; };
-    const rm = await db.storage.from(C.BUCKET).remove([p.path]);
-    if (rm.error) return fail(rm.error.message);
-    const del = await db.from('photos').delete().eq('id', p.id).select('id');
-    if (del.error) return fail(del.error.message);
-    if (!del.data.length) return fail('권한이 없어요. 관리자로 다시 로그인해 주세요.');
-    dropCard(p.id);
-  }
-
+  $('lbDel').onclick = async e => {
+    e.stopPropagation();
+    const n = lbNode;
+    if (!n || !confirm(`"${n.p.name}" 사진을 삭제할까요?\n사진 파일과 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
+    const btn = $('lbDel');
+    btn.disabled = true; btn.textContent = '삭제 중…';
+    const done = m => { btn.disabled = false; btn.textContent = '이 사진 삭제'; if (m) alert('삭제하지 못했어요: ' + m); };
+    const rm = await db.storage.from(C.BUCKET).remove([n.p.path]);
+    if (rm.error) return done(rm.error.message);
+    const del = await db.from('photos').delete().eq('id', n.p.id).select('id');
+    if (del.error) return done(del.error.message);
+    if (!del.data.length) return done('권한이 없어요. 관리자로 다시 로그인해 주세요.');
+    done();
+    closeLightbox();
+    removeNode(n.p.id);
+  };
   refreshAdmin();
 
-  const { data, error } = await db.from('photos').select('*').eq('archived', true).order('created_at', { ascending: false }).limit(1000);
+  // ---------- 데이터 ----------
+  measure();
+  addEventListener('resize', measure);
+  requestAnimationFrame(frame);
+
+  const { data, error } = await db.from('photos').select('*').eq('archived', true)
+    .order('created_at', { ascending: false }).limit(1000);
   if (error) {
-    grid.outerHTML = `<p class="empty">불러오지 못했어요: ${esc(error.message)}</p>`;
+    document.body.insertAdjacentHTML('beforeend', `<p class="empty">불러오지 못했어요: ${esc(error.message)}</p>`);
     return;
   }
-  if (!data.length) grid.insertAdjacentHTML('beforebegin', '<p class="empty" id="empty">아직 사진이 없어요.</p>');
-  for (const p of data) { const el = card(p); if (el) grid.appendChild(el); }
-  updateCount();
-
-  // archive.html#<id> 로 열면 해당 사진으로 스크롤
-  function focusHash() {
-    const id = location.hash.slice(1);
-    const el = id && document.getElementById('p-' + id);
-    if (!el) return false;
-    document.querySelectorAll('figure.hl').forEach(f => f.classList.remove('hl'));
-    el.classList.add('hl');
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return true;
-  }
+  if (!data.length) document.body.insertAdjacentHTML('beforeend', '<p class="empty" id="empty">아직 사진이 없어요.</p>');
+  // 미리보기: archive.html?demo=40 → 기존 사진을 반복해 40장처럼 보여줌
+  const demo = +new URLSearchParams(location.search).get('demo') || 0;
+  const list = demo && data.length
+    ? Array.from({ length: demo }, (_, i) => ({ ...data[i % data.length], id: data[i % data.length].id + '-' + i }))
+    : data;
+  for (const p of list) addNode(p, false);
+  layout();
   focusHash();
-  addEventListener('hashchange', focusHash);
 
   db.channel('photos-feed')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'photos', filter: 'archived=eq.true' }, ({ new: p }) => {
-      document.getElementById('empty')?.remove();
-      const el = card(p, true);
-      if (el) { grid.prepend(el); updateCount(); focusHash(); }
+      $('empty')?.remove();
+      if (addNode(p, true)) { layout(); focusHash(); }
     })
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'photos' }, ({ old }) => dropCard(old.id))
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'photos' }, ({ old }) => removeNode(old.id))
     .subscribe();
 })();
 </script>
