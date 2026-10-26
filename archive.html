@@ -34,6 +34,30 @@
   @keyframes pop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   .empty { padding: 32px; color: var(--muted); }
 
+  /* 관리자 */
+  .nav .admin-link { margin-left: auto; font-weight: 500; }
+  figure { position: relative; }
+  .del {
+    display: none; position: absolute; top: 8px; right: 8px;
+    padding: 6px 12px; font-size: 13px; border-radius: 999px;
+    background: rgba(0,0,0,.7); color: #fff; border: 1px solid rgba(255,255,255,.5);
+  }
+  body.admin .del { display: block; }
+  .del:hover { background: var(--danger); border-color: var(--danger); }
+  dialog {
+    background: var(--panel); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 16px; padding: 28px; width: min(360px, calc(100vw - 32px));
+  }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  dialog h2 { margin: 0 0 20px; font-size: 20px; }
+  dialog input {
+    width: 100%; font: inherit; font-size: 16px; padding: 12px 14px; margin-bottom: 10px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px;
+  }
+  dialog .row { display: flex; gap: 8px; margin-top: 8px; }
+  dialog .row button { flex: 1; padding: 12px; font-size: 15px; }
+  dialog .msg { color: var(--danger); font-size: 14px; min-height: 20px; margin: 4px 0 0; }
+
   .lightbox {
     position: fixed; inset: 0; background: rgba(0,0,0,.94);
     display: none; place-items: center; z-index: 5; cursor: zoom-out; padding: 24px;
@@ -52,7 +76,7 @@
 </style>
 </head>
 <body>
-<nav class="nav"><a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a></nav>
+<nav class="nav"><a href="index.html">Photo Booth</a><a class="on" href="archive.html">Archive</a><a href="#" class="admin-link" id="adminLink">관리자</a></nav>
 <header>
   <div>
     <div class="eyebrow" id="sub"></div>
@@ -61,6 +85,18 @@
   <div class="count" id="count"></div>
 </header>
 <main class="grid" id="grid"></main>
+<dialog id="loginDlg">
+  <form method="dialog" id="loginForm">
+    <h2>관리자 로그인</h2>
+    <input type="email" id="email" placeholder="이메일" autocomplete="username" required>
+    <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" required>
+    <p class="msg" id="loginMsg"></p>
+    <div class="row">
+      <button type="button" id="loginCancel">취소</button>
+      <button type="submit" class="primary">로그인</button>
+    </div>
+  </form>
+</dialog>
 <div class="lightbox" id="lb"><div><img id="lbImg" alt=""><p id="lbCap"></p></div></div>
 
 <script src="config.js"></script>
@@ -84,7 +120,9 @@
     if (isNew) f.className = 'new';
     const src = photoUrl(p.path);
     f.innerHTML = `<img loading="lazy" src="${esc(src)}" alt="${esc(p.name)}">
-      <figcaption><b>${esc(p.name)}</b>${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}</figcaption>`;
+      <figcaption><b>${esc(p.name)}</b>${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}</figcaption>
+      <button class="del" type="button">삭제</button>`;
+    f.querySelector('.del').onclick = e => { e.stopPropagation(); removePhoto(p, f); };
     f.onclick = () => {
       document.getElementById('lbImg').src = src;
       document.getElementById('lbCap').innerHTML = `${esc(p.name)}${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}`;
@@ -94,6 +132,67 @@
   }
   document.getElementById('lb').onclick = e => e.currentTarget.classList.remove('open');
   const updateCount = () => document.getElementById('count').textContent = total ? `${total} portraits` : '';
+
+  function dropCard(id) {
+    const el = document.getElementById('p-' + id);
+    if (!el) return;
+    el.remove();
+    seen.delete(id);
+    total--;
+    updateCount();
+  }
+
+  // ---------- 관리자 ----------
+  const dlg = document.getElementById('loginDlg');
+  const adminLink = document.getElementById('adminLink');
+
+  async function refreshAdmin() {
+    const { data: { session } } = await db.auth.getSession();
+    let ok = false;
+    if (session) ok = (await db.rpc('is_admin')).data === true;
+    document.body.classList.toggle('admin', ok);
+    adminLink.textContent = session ? (ok ? '관리자 로그아웃' : '로그아웃 (권한 없음)') : '관리자';
+    return { session, ok };
+  }
+
+  adminLink.onclick = async e => {
+    e.preventDefault();
+    const { session } = await refreshAdmin();
+    if (session) { await db.auth.signOut(); refreshAdmin(); return; }
+    document.getElementById('loginMsg').textContent = '';
+    dlg.showModal();
+  };
+  document.getElementById('loginCancel').onclick = () => dlg.close();
+  document.getElementById('loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const msg = document.getElementById('loginMsg');
+    msg.textContent = '';
+    const { error } = await db.auth.signInWithPassword({
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('pw').value,
+    });
+    if (error) { msg.textContent = '로그인 실패: ' + error.message; return; }
+    const { ok } = await refreshAdmin();
+    if (!ok) { msg.textContent = '관리자로 등록된 계정이 아니에요.'; return; }
+    document.getElementById('pw').value = '';
+    dlg.close();
+  };
+
+  async function removePhoto(p, el) {
+    if (!confirm(`"${p.name}" 사진을 삭제할까요?\n사진 파일과 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
+    const btn = el.querySelector('.del');
+    btn.disabled = true;
+    btn.textContent = '삭제 중…';
+    const fail = m => { alert('삭제하지 못했어요: ' + m); btn.disabled = false; btn.textContent = '삭제'; };
+    const rm = await db.storage.from(C.BUCKET).remove([p.path]);
+    if (rm.error) return fail(rm.error.message);
+    const del = await db.from('photos').delete().eq('id', p.id).select('id');
+    if (del.error) return fail(del.error.message);
+    if (!del.data.length) return fail('권한이 없어요. 관리자로 다시 로그인해 주세요.');
+    dropCard(p.id);
+  }
+
+  refreshAdmin();
 
   const { data, error } = await db.from('photos').select('*').eq('archived', true).order('created_at', { ascending: false }).limit(1000);
   if (error) {
@@ -123,6 +222,7 @@
       const el = card(p, true);
       if (el) { grid.prepend(el); updateCount(); focusHash(); }
     })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'photos' }, ({ old }) => dropCard(old.id))
     .subscribe();
 })();
 </script>
