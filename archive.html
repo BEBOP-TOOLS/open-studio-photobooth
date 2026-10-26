@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261026225842">
+<link rel="stylesheet" href="style.css?v=20261026230122">
 <style>
   .nav { display: flex; gap: 20px; padding: 20px 32px 0; font-size: 14px; font-weight: 600; }
   .nav a { color: var(--muted); text-decoration: none; }
   .nav a.on { color: var(--fg); }
-  figure.hl img { outline: 3px solid var(--fg); outline-offset: 4px; }
+  figure.hl figcaption b { text-decoration: underline; text-underline-offset: 4px; }
+  figure.hl img { filter: brightness(1.15); }
   header {
     padding: 28px 32px 24px;
     display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap;
@@ -26,6 +27,7 @@
   figure img {
     width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block;
     background: var(--line);
+    will-change: transform;
   }
   figcaption { margin-top: 8px; font-size: 15px; line-height: 1.4; }
   figcaption b { font-weight: 600; }
@@ -99,9 +101,9 @@
 </dialog>
 <div class="lightbox" id="lb"><div><img id="lbImg" alt=""><p id="lbCap"></p></div></div>
 
-<script src="config.js?v=20261026225842"></script>
-<script src="lib/supabase.min.js?v=20261026225842"></script>
-<script src="common.js?v=20261026225842"></script>
+<script src="config.js?v=20261026230122"></script>
+<script src="lib/supabase.min.js?v=20261026230122"></script>
+<script src="common.js?v=20261026230122"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -110,6 +112,52 @@
   document.getElementById('sub').textContent = C.EVENT_SUB || '';
   const seen = new Set();
   let total = 0;
+
+  // ---------- 회전: 사진마다 속도가 조금씩 다르고, 커서를 올리면 빨라짐 ----------
+  const spin = (() => {
+    const BASE_MIN = 6, BASE_MAX = 16;  // 평소 속도 (도/초)
+    const HOVER_MULT = 6;               // 커서를 올렸을 때 배수
+    const EASE = 3;                     // 속도 변화 부드러움 (클수록 빠르게 반응)
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const items = new Map();            // figure → state
+    const io = new IntersectionObserver(entries => {
+      for (const e of entries) { const st = items.get(e.target); if (st) st.visible = e.isIntersecting; }
+    }, { rootMargin: '200px' });
+
+    function add(fig) {
+      const st = {
+        img: fig.querySelector('img'),
+        angle: Math.random() * 360,
+        base: BASE_MIN + Math.random() * (BASE_MAX - BASE_MIN),
+        speed: 0, hover: false, visible: true,
+      };
+      st.speed = st.base;
+      fig.addEventListener('pointerenter', () => { st.hover = true; });
+      fig.addEventListener('pointerleave', () => { st.hover = false; });
+      items.set(fig, st);
+      io.observe(fig);
+      st.img.style.transform = `rotate(${st.angle}deg)`;
+    }
+    function remove(fig) { items.delete(fig); io.unobserve(fig); }
+
+    let last = performance.now();
+    function tick(now) {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      if (!reduce) {
+        const k = 1 - Math.exp(-EASE * dt);
+        for (const st of items.values()) {
+          const target = st.hover ? st.base * HOVER_MULT : st.base;
+          st.speed += (target - st.speed) * k;
+          st.angle = (st.angle + st.speed * dt) % 360;
+          if (st.visible) st.img.style.transform = `rotate(${st.angle}deg)`;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    return { add, remove };
+  })();
 
   function card(p, isNew) {
     if (seen.has(p.id)) return null;
@@ -122,6 +170,7 @@
     f.innerHTML = `<img loading="lazy" src="${esc(src)}" alt="${esc(p.name)}">
       <figcaption><b>${esc(p.name)}</b>${p.affiliation ? `<span>${esc(p.affiliation)}</span>` : ''}</figcaption>
       <button class="del" type="button">삭제</button>`;
+    spin.add(f);
     f.querySelector('.del').onclick = e => { e.stopPropagation(); removePhoto(p, f); };
     f.onclick = () => {
       document.getElementById('lbImg').src = src;
@@ -137,6 +186,7 @@
     const el = document.getElementById('p-' + id);
     if (!el) return;
     el.remove();
+    spin.remove(el);
     seen.delete(id);
     total--;
     updateCount();
