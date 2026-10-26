@@ -6,7 +6,7 @@ window.BOOTH_CONFIG = {
 
   // QR이 가리킬 사이트 주소 (끝에 / 포함). 비워두면 현재 페이지 주소 기준.
   // 로컬 테스트 시 폰이 같은 Wi‑Fi라면 'http://<맥 IP>:8000/' 로 설정
-  PUBLIC_BASE_URL: 'http://192.168.219.101:8000/',
+  PUBLIC_BASE_URL: 'https://bebop-tools.github.io/open-studio-photobooth/',
 
   EVENT_TITLE: 'OPEN STUDIO',
   EVENT_SUB: '2026',
