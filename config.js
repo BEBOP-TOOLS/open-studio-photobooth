@@ -11,7 +11,7 @@ window.BOOTH_CONFIG = {
   EVENT_TITLE: 'OPEN STUDIO',
   EVENT_SUB: '2026',
 
-  // 촬영 결과 해상도 (4:5)
+  // 촬영 결과 해상도 (1:1)
   OUTPUT_W: 1080,
-  OUTPUT_H: 1350,
+  OUTPUT_H: 1080,
 };

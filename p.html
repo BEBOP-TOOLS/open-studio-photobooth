@@ -11,7 +11,7 @@
     padding: 32px 16px calc(32px + env(safe-area-inset-bottom));
     display: flex; flex-direction: column; gap: 20px;
   }
-  .photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; background: var(--line); }
+  .photo { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: var(--line); }
   h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
   h1 span { color: var(--muted); font-weight: 500; font-size: 18px; margin-left: 8px; }
   .actions { display: flex; flex-direction: column; gap: 10px; }
@@ -98,7 +98,7 @@
   const fg = css.getPropertyValue('--fg').trim() || '#141414';
   const muted = css.getPropertyValue('--muted').trim() || '#8a8780';
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  const pw = 880, ph = pw * 5 / 4, px = (W - pw) / 2, py = 300;
+  const pw = 920, ph = pw * C.OUTPUT_H / C.OUTPUT_W, px = (W - pw) / 2, py = 360;
   g.drawImage(img, px, py, pw, ph);
   g.textAlign = 'center';
   g.fillStyle = muted;
