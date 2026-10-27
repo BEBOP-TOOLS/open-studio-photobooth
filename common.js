@@ -29,7 +29,7 @@
       <svg class="ring-text" viewBox="0 0 1000 1000" aria-hidden="true"
            style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">
         <defs><path id="${id}" d="M 500 ${500 - r} a ${r} ${r} 0 1 0 0 ${2 * r} a ${r} ${r} 0 1 0 0 ${-2 * r}"/></defs>
-        <text fill="#fff" fill-opacity="0.6" font-size="24" font-weight="600" letter-spacing="4"
+        <text fill="#fff" font-size="34" font-weight="600" letter-spacing="5"
               font-family="Pretendard, -apple-system, sans-serif" text-anchor="middle">
           <textPath href="#${id}" startOffset="${offset}%">${esc(C.RING_TEXT)}</textPath>
         </text>

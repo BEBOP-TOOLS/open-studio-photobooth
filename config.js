@@ -25,7 +25,7 @@ window.BOOTH_CONFIG = {
   ],
 
   // 아카이브 상단 문구
-  WELCOME_TEXT: 'WELCOME TO BEBOP.',
+  WELCOME_TEXT: 'WELCOME TO',           // 뒤에 BEBOP. 로고(assets/bebop-logo.svg)가 붙음
 
   // 촬영 결과 해상도 (1:1)
   OUTPUT_W: 1080,
