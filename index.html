@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027113913">
+<link rel="stylesheet" href="style.css?v=20261027124318">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -60,7 +60,17 @@
 
   /* 호버 시 느린 모션 */
   .side svg, .heart svg { transition: transform .9s cubic-bezier(.2, .8, .2, 1); }
-  #filterBtn:hover svg { transform: rotate(-22deg) translateY(-1px); }
+  /* 필터 토글: fisheye(바깥 화살표) ↔ wide(안쪽 화살표) */
+  #filterBtn { display: block; }
+  #filterBtn svg {
+    position: absolute; left: 50%; top: 50%; margin: -18px 0 0 -18px;
+    transition: opacity .6s ease, transform .9s cubic-bezier(.2, .8, .2, 1);
+  }
+  #filterBtn .ico-wide { opacity: 0; transform: scale(.6) rotate(-45deg); }
+  #filterBtn[data-mode=wide] .ico-fisheye { opacity: 0; transform: scale(1.4) rotate(45deg); }
+  #filterBtn[data-mode=wide] .ico-wide { opacity: 1; transform: none; }
+  #filterBtn[data-mode=fisheye]:hover .ico-fisheye { transform: scale(1.14); }
+  #filterBtn[data-mode=wide]:hover .ico-wide { transform: scale(.86); }
   #galleryBtn:hover svg { transform: rotate(60deg) scale(1.08); }
   .side.back:hover svg { transform: translateX(-3px); }
   .side.solid:not(:disabled):hover svg { transform: translateX(3px); }
@@ -72,17 +82,11 @@
   }
   [data-tip]::after {
     content: attr(data-tip); bottom: calc(100% + 12px); transform: translate(-50%, 4px);
-    background: #000; color: #fff; border: 1px solid rgba(255,255,255,.28); border-radius: 7px;
-    padding: 5px 10px; font-size: 12px; font-weight: 500; letter-spacing: .04em; white-space: nowrap;
-  }
-  [data-tip]::before {
-    content: ''; bottom: calc(100% + 6px); width: 9px; height: 9px; margin-left: -4.5px;
-    background: #000; border-right: 1px solid rgba(255,255,255,.28); border-bottom: 1px solid rgba(255,255,255,.28);
-    transform: translateY(4px) rotate(45deg); z-index: 1;
+    background: #000; color: #fff; border: 1px solid rgba(255,255,255,.28); border-radius: 999px;
+    padding: 5px 12px; font-size: 12px; font-weight: 500; letter-spacing: .04em; white-space: nowrap;
   }
   [data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); }
-  [data-tip]:hover::before { opacity: 1; transform: translateY(0) rotate(45deg); }
-  [data-tip]:disabled::after, [data-tip]:disabled::before, .side.open::after, .side.open::before { display: none; }
+  [data-tip]:disabled::after { display: none; }
 
   /* 촬영 후: 하트 */
   .heart {
@@ -92,18 +96,6 @@
   .heart path { transition: fill .6s ease; }
   .heart:hover path { fill: currentColor; }
   .heart:hover svg { transform: scale(1.08); }
-  .side.tool.open { background: #fff; color: #000; }
-  .filter-menu {
-    position: absolute; bottom: calc(100% + 14px); right: -8px;
-    display: flex; flex-direction: column; gap: 8px; z-index: 4;
-  }
-  .filter-menu[hidden] { display: none; }
-  .filter-menu button {
-    min-width: 120px; padding: 10px 18px; font-size: 15px;
-    background: rgba(0,0,0,.7); border-color: rgba(255,255,255,.6);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  }
-  .filter-menu button.on { background: #fff; color: #000; border-color: #fff; }
 
   .shutter {
     width: 84px; height: 84px; padding: 0;
@@ -215,13 +207,16 @@
   <div class="controls">
     <section class="step active live-row" data-step="live">
       <div class="side-wrap left">
-        <button class="side tool" id="filterBtn" aria-label="필터" data-tip="filter">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4.5 19.5 13 11"/><path d="M15 9l1.5-1.5"/>
-            <path d="M17 2.5v3M15.5 4h3"/><path d="M20.5 9v2.4M19.3 10.2h2.4"/><path d="M10 3.2v2.2M8.9 4.3h2.2"/>
+        <button class="side" id="filterBtn" aria-label="필터 전환" data-tip="fisheye" data-mode="fisheye">
+          <svg class="ico-fisheye" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9V4h5M4 4l5.5 5.5"/><path d="M20 9V4h-5M20 4l-5.5 5.5"/>
+            <path d="M4 15v5h5M4 20l5.5-5.5"/><path d="M20 15v5h-5M20 20l-5.5-5.5"/>
+          </svg>
+          <svg class="ico-wide" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 4.5V10H4.5M4 4l6 6"/><path d="M14 4.5V10h5.5M20 4l-6 6"/>
+            <path d="M10 19.5V14H4.5M4 20l6-6"/><path d="M14 19.5V14h5.5M20 20l-6-6"/>
           </svg>
         </button>
-        <div class="filter-menu" id="filterMenu" hidden></div>
       </div>
       <button class="shutter" id="shutter" aria-label="촬영"></button>
       <div class="side-wrap right">
@@ -321,12 +316,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027113913"></script>
-<script src="lib/supabase.min.js?v=20261027113913"></script>
-<script src="lib/qrcode.min.js?v=20261027113913"></script>
-<script src="common.js?v=20261027113913"></script>
-<script src="filter.js?v=20261027113913"></script>
-<script src="hangul.js?v=20261027113913"></script>
+<script src="config.js?v=20261027124318"></script>
+<script src="lib/supabase.min.js?v=20261027124318"></script>
+<script src="lib/qrcode.min.js?v=20261027124318"></script>
+<script src="common.js?v=20261027124318"></script>
+<script src="filter.js?v=20261027124318"></script>
+<script src="hangul.js?v=20261027124318"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -381,22 +376,18 @@
     fx = { ...pr.fx };
     saveFx();
     buildSliders();
-    renderFilterMenu();
+    renderFilterBtn();
   }
-  function renderFilterMenu() {
-    $('filterMenu').innerHTML = BoothFilter.PRESETS.map(p =>
-      `<button type="button" data-id="${p.id}" class="${p.id === presetId ? 'on' : ''}">${p.name}</button>`).join('');
-    $('filterMenu').querySelectorAll('button').forEach(b => b.onclick = () => { applyPreset(b.dataset.id); toggleFilterMenu(false); });
+  // 누를 때마다 다음 필터로 전환 (아이콘·말풍선은 현재 필터)
+  function renderFilterBtn() {
+    $('filterBtn').dataset.mode = presetId;
+    $('filterBtn').dataset.tip = presetId;
   }
-  function toggleFilterMenu(open) {
-    $('filterMenu').hidden = !open;
-    $('filterBtn').classList.toggle('open', open);
-  }
-  $('filterBtn').onclick = e => { e.stopPropagation(); toggleFilterMenu($('filterMenu').hidden); };
-  document.addEventListener('pointerdown', e => {
-    if (!e.target.closest('.side-wrap.left')) toggleFilterMenu(false);
-  });
-  renderFilterMenu();
+  $('filterBtn').onclick = () => {
+    const list = BoothFilter.PRESETS, i = list.findIndex(p => p.id === presetId);
+    applyPreset(list[(i + 1) % list.length].id);
+  };
+  renderFilterBtn();
   $('copyFx').onclick = () => navigator.clipboard.writeText(JSON.stringify(fx, null, 2));
   buildSliders();
 
@@ -490,7 +481,6 @@
 
   function capture() {
     if (state !== 'live' || counting || !video.videoWidth) return;
-    toggleFilterMenu(false);
     counting = true;
     $('shutter').classList.add('busy');
     let n = 3;
