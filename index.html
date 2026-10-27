@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027143209">
+<link rel="stylesheet" href="style.css?v=20261027143323">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -382,12 +382,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027143209"></script>
-<script src="lib/supabase.min.js?v=20261027143209"></script>
-<script src="lib/qrcode.min.js?v=20261027143209"></script>
-<script src="common.js?v=20261027143209"></script>
-<script src="filter.js?v=20261027143209"></script>
-<script src="hangul.js?v=20261027143209"></script>
+<script src="config.js?v=20261027143323"></script>
+<script src="lib/supabase.min.js?v=20261027143323"></script>
+<script src="lib/qrcode.min.js?v=20261027143323"></script>
+<script src="common.js?v=20261027143323"></script>
+<script src="filter.js?v=20261027143323"></script>
+<script src="hangul.js?v=20261027143323"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -736,7 +736,9 @@
   let archiveMode = 'preview';
   const postMode = () => frame.contentWindow?.postMessage({ type: 'booth:mode', mode: archiveMode }, location.origin);
   frame.addEventListener('load', postMode);
-  frame.src = 'archive.html?mode=preview';
+  // 배포 버전을 붙여서 갤러리도 항상 최신 파일을 받게 함
+  const ver = (document.querySelector('script[src*="config.js"]')?.src.match(/v=(\d+)/) || [])[1] || '';
+  frame.src = 'archive.html?mode=preview&v=' + ver;
   function openArchive(hash = '', mode = 'full') {
     archiveMode = mode;
     postMode();
