@@ -16,6 +16,14 @@ window.BOOTH_CONFIG = {
   RING_RADIUS: 0.44,     // 사진 너비 대비 반지름 (0.5 = 사진 가장자리)
   RING_ANGLE: 135,       // 텍스트 가운데 위치 (12시 = 0, 시계방향 도 단위. 135 = 우측 하단)
 
+  // 소속 입력 화면에서 고를 수 있는 회사 태그 (여기에 추가하면 바로 반영)
+  COMPANIES: [
+    'BEBOP', 'HEAZ', 'Studio Kim', 'Jiyounkim', 'Samsung', 'BKID', 'SWNA', 'Secondwhite',
+    'BDCI', 'COG', 'Double D', 'Superset', 'Studio 2', 'Unichest', 'Useful Workshop',
+    'eurekai.studio', 'found/Founded', 'Flake', 'H.W.F', 'TM.S', 'Intenxiv', 'Ohseven',
+    'SP', 'rojotype',
+  ],
+
   // 아카이브 상단 문구
   WELCOME_TEXT: 'WELCOME TO BEBOP.',
 

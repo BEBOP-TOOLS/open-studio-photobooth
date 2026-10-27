@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027112008">
+<link rel="stylesheet" href="style.css?v=20261027113913">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -38,7 +38,6 @@
   .controls { height: 120px; display: grid; place-items: center; }
   .step { display: none; }
   .controls .step.active { display: flex; gap: 12px; align-items: center; }
-  .controls .step[data-step=review] button { min-width: 140px; }
 
   /* 아이폰 스타일 셔터 */
   /* 셔터 양옆: 필터 / 갤러리 */
@@ -51,11 +50,48 @@
   .side {
     width: 56px; height: 56px; padding: 0; border-radius: 50%;
     display: grid; place-items: center; color: #fff; background: transparent;
-    border: 0; text-decoration: none; transition: transform .12s, opacity .15s;
+    border: 0; text-decoration: none; transition: transform .12s, background .3s, color .3s;
+    position: relative;
   }
-  .side:hover { opacity: .8; }
-  .side:active { transform: scale(.92); }
-  .side.tool { border: 2px solid #fff; }
+  .side:active { transform: scale(.94); }
+  .side.tool { border: 1.5px solid #fff; }
+  .side.solid { background: #fff; color: #000; }
+  .side:disabled { opacity: .3; cursor: default; }
+
+  /* 호버 시 느린 모션 */
+  .side svg, .heart svg { transition: transform .9s cubic-bezier(.2, .8, .2, 1); }
+  #filterBtn:hover svg { transform: rotate(-22deg) translateY(-1px); }
+  #galleryBtn:hover svg { transform: rotate(60deg) scale(1.08); }
+  .side.back:hover svg { transform: translateX(-3px); }
+  .side.solid:not(:disabled):hover svg { transform: translateX(3px); }
+
+  /* 검은 말풍선 */
+  [data-tip]::after, [data-tip]::before {
+    position: absolute; left: 50%; pointer-events: none; opacity: 0;
+    transition: opacity .35s ease, transform .35s ease;
+  }
+  [data-tip]::after {
+    content: attr(data-tip); bottom: calc(100% + 12px); transform: translate(-50%, 4px);
+    background: #000; color: #fff; border: 1px solid rgba(255,255,255,.28); border-radius: 7px;
+    padding: 5px 10px; font-size: 12px; font-weight: 500; letter-spacing: .04em; white-space: nowrap;
+  }
+  [data-tip]::before {
+    content: ''; bottom: calc(100% + 6px); width: 9px; height: 9px; margin-left: -4.5px;
+    background: #000; border-right: 1px solid rgba(255,255,255,.28); border-bottom: 1px solid rgba(255,255,255,.28);
+    transform: translateY(4px) rotate(45deg); z-index: 1;
+  }
+  [data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); }
+  [data-tip]:hover::before { opacity: 1; transform: translateY(0) rotate(45deg); }
+  [data-tip]:disabled::after, [data-tip]:disabled::before, .side.open::after, .side.open::before { display: none; }
+
+  /* 촬영 후: 하트 */
+  .heart {
+    width: 84px; height: 84px; padding: 0; border-radius: 50%; border: 0;
+    background: #fff; color: #000; display: grid; place-items: center; position: relative;
+  }
+  .heart path { transition: fill .6s ease; }
+  .heart:hover path { fill: currentColor; }
+  .heart:hover svg { transform: scale(1.08); }
   .side.tool.open { background: #fff; color: #000; }
   .filter-menu {
     position: absolute; bottom: calc(100% + 14px); right: -8px;
@@ -91,6 +127,32 @@
     padding: 24px; text-align: center;
   }
   .sheet > *, .sheet input[type=text] { width: min(440px, 100%); }
+
+  /* 이름·소속 입력 */
+  .sheet > .prompt, .sheet > .tags { width: min(680px, 100%); }
+  .prompt { display: flex; align-items: baseline; gap: 18px; }
+  .lead { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+  .field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #fff; }
+  .sheet .field input[type=text] {
+    flex: 1; min-width: 0; width: auto; border: 0; text-align: left; font-size: 40px; padding: 4px 0;
+  }
+  .ime {
+    flex: none; width: 34px; height: 30px; padding: 0; border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.45); background: transparent; color: #fff;
+    font-size: 13px; font-weight: 600; opacity: .75;
+  }
+  .ime:hover { opacity: 1; }
+  .icon-row { display: flex; justify-content: center; gap: 20px; }
+  .sheet > .icon-row { width: auto; }
+  .hint { font-size: 15px !important; }
+  .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-height: 190px; overflow-y: auto; }
+  .tags[hidden] { display: none; }
+  .tags button {
+    padding: 7px 14px; font-size: 14px; font-weight: 500;
+    border-color: rgba(255,255,255,.3); transition: border-color .2s, background .2s, color .2s;
+  }
+  .tags button:hover { border-color: #fff; }
+  .tags button.on { background: #fff; color: #000; border-color: #fff; }
   .sheet input[type=text]::placeholder { color: #4a4a4a; }
   .sheet h1 { font-size: 40px; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
   .sheet p { margin: 0; color: var(--muted); font-size: 17px; line-height: 1.6; }
@@ -102,12 +164,26 @@
   .err { color: var(--danger) !important; }
 
 
-  /* 설정 */
-  .gear {
-    position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; padding: 0;
-    border-color: transparent; color: var(--muted); opacity: .35; font-size: 20px;
+  /* 숨김 툴바: 화면 맨 위로 커서를 올리면 나타남 */
+  .toolbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; justify-content: center; gap: 8px; padding: 10px;
+    background: rgba(18,18,18,.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    transform: translateY(-100%); transition: transform .25s ease;
   }
-  .gear:hover { opacity: 1; }
+  .toolbar.show { transform: none; }
+  .toolbar button { padding: 7px 14px; font-size: 13px; font-weight: 500; border-color: rgba(255,255,255,.35); }
+
+  /* 갤러리: 촬영 화면 위에 겹쳐 띄움 (전체화면 유지) */
+  .archive-layer {
+    position: fixed; inset: 0; z-index: 15; background: #000;
+    opacity: 0; pointer-events: none; transition: opacity .35s ease;
+  }
+  .archive-layer.open { opacity: 1; pointer-events: auto; }
+  .archive-layer iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* 설정 */
   .settings {
     position: fixed; top: 0; right: 0; bottom: 0; width: 340px;
     background: var(--panel); border-left: 1px solid var(--line);
@@ -139,8 +215,8 @@
   <div class="controls">
     <section class="step active live-row" data-step="live">
       <div class="side-wrap left">
-        <button class="side tool" id="filterBtn" aria-label="필터" title="필터">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <button class="side tool" id="filterBtn" aria-label="필터" data-tip="filter">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4.5 19.5 13 11"/><path d="M15 9l1.5-1.5"/>
             <path d="M17 2.5v3M15.5 4h3"/><path d="M20.5 9v2.4M19.3 10.2h2.4"/><path d="M10 3.2v2.2M8.9 4.3h2.2"/>
           </svg>
@@ -149,7 +225,7 @@
       </div>
       <button class="shutter" id="shutter" aria-label="촬영"></button>
       <div class="side-wrap right">
-        <a class="side" id="galleryBtn" href="archive.html" aria-label="갤러리" title="갤러리">
+        <a class="side" id="galleryBtn" href="archive.html" aria-label="갤러리" data-tip="gallery">
           <svg viewBox="0 0 56 56" width="52" height="52" fill="#fff">
             <circle cx="28" cy="28" r="7"/>
             <circle cx="45" cy="28" r="6.2"/><circle cx="36.5" cy="42.7" r="6.2"/><circle cx="19.5" cy="42.7" r="6.2"/>
@@ -158,29 +234,43 @@
         </a>
       </div>
     </section>
-    <section class="step" data-step="review">
-      <button id="retake">다시 찍기</button>
-      <button class="primary" id="accept">좋아요</button>
+    <section class="step live-row" data-step="review">
+      <div class="side-wrap left">
+        <button class="side tool back" id="retake" aria-label="다시 찍기" data-tip="retake"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg></button>
+      </div>
+      <button class="heart" id="accept" aria-label="좋아요" data-tip="keep"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 20.3S4.5 15.7 4.5 10.1A4.2 4.2 0 0 1 12 7.5a4.2 4.2 0 0 1 7.5 2.6c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+      <div class="side-wrap right"></div>
     </section>
   </div>
 </div>
 
 <section class="step sheet" data-step="name">
-  <h1>이름을 알려주세요</h1>
-  <input type="text" id="name" maxlength="40" autocomplete="off" placeholder="이름">
-  <div class="row">
-    <button class="ghost" data-back="review">이전</button>
-    <button class="primary" id="nameNext" disabled>다음</button>
+  <div class="prompt">
+    <span class="lead">Welcome,</span>
+    <label class="field">
+      <input type="text" id="name" maxlength="40" autocomplete="off" spellcheck="false" lang="en">
+      <button type="button" class="ime" id="nameIme" title="한/영 전환">A</button>
+    </label>
+  </div>
+  <div class="icon-row">
+    <button class="side tool back" data-back="review" aria-label="이전" data-tip="back"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg></button>
+    <button class="side solid" id="nameNext" aria-label="다음" data-tip="next" disabled><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
   </div>
 </section>
 
 <section class="step sheet" data-step="affil">
-  <h1>소속이 있나요?</h1>
-  <input type="text" id="affil" maxlength="60" autocomplete="off" placeholder="소속">
-  <p>없으면 건너뛰어도 괜찮아요.</p>
+  <div class="prompt">
+    <span class="lead">from</span>
+    <label class="field">
+      <input type="text" id="affil" maxlength="60" autocomplete="off" spellcheck="false" lang="en">
+      <button type="button" class="ime" id="affilIme" title="한/영 전환">A</button>
+    </label>
+  </div>
+  <p class="hint">No affiliation? Feel free to skip.</p>
+  <div class="tags" id="tags"></div>
   <div class="row">
-    <button id="affilSkip">건너뛰기</button>
-    <button class="primary" id="affilDone">완료</button>
+    <button id="affilSkip">skip</button>
+    <button class="primary" id="affilDone">done</button>
   </div>
 </section>
 
@@ -209,7 +299,11 @@
   <p id="restartIn" style="font-size:14px"></p>
 </section>
 
-<button class="gear" id="gear" title="효과 설정 (S)">⚙</button>
+<div class="toolbar" id="toolbar">
+  <button id="fsBtn" type="button">전체화면</button>
+  <button id="gear" type="button">효과 설정</button>
+</div>
+<div class="archive-layer" id="archiveLayer"><iframe id="archiveFrame" title="Archive"></iframe></div>
 <aside class="settings" id="settings">
   <h2>효과 설정 <button id="closeSettings">닫기</button></h2>
   <div id="sliders"></div>
@@ -227,11 +321,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027112008"></script>
-<script src="lib/supabase.min.js?v=20261027112008"></script>
-<script src="lib/qrcode.min.js?v=20261027112008"></script>
-<script src="common.js?v=20261027112008"></script>
-<script src="filter.js?v=20261027112008"></script>
+<script src="config.js?v=20261027113913"></script>
+<script src="lib/supabase.min.js?v=20261027113913"></script>
+<script src="lib/qrcode.min.js?v=20261027113913"></script>
+<script src="common.js?v=20261027113913"></script>
+<script src="filter.js?v=20261027113913"></script>
+<script src="hangul.js?v=20261027113913"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -306,7 +401,7 @@
   buildSliders();
 
   const toggleSettings = open => $('settings').classList.toggle('open', open);
-  $('gear').onclick = () => toggleSettings(true);
+  $('gear').onclick = () => { toggleSettings(true); toolbar.classList.remove('show'); };
   $('closeSettings').onclick = () => toggleSettings(false);
 
   // ---------- 카메라 ----------
@@ -338,9 +433,9 @@
   $('camSelect').onchange = e => { store.set(CAM_KEY, e.target.value); startCamera(e.target.value); };
   startCamera(store.get(CAM_KEY));
 
-  let frozen = false;
+  let frozen = false, archiveOpen = false;
   (function loop(t) {
-    if (!frozen) filter.render(video, fx, t / 1000);
+    if (!frozen && !archiveOpen) filter.render(video, fx, t / 1000);
     requestAnimationFrame(loop);
   })(0);
 
@@ -360,9 +455,35 @@
     if (next === 'affil') setTimeout(() => $('affil').focus(), 50);
   }
 
+  // ---------- 이름·소속 입력 (한/영 전환 + 회사 태그) ----------
+  const nameIn = HangulInput.attach($('name'), $('nameIme'), v => { $('nameNext').disabled = !v.trim(); });
+  const affilIn = HangulInput.attach($('affil'), $('affilIme'), v => filterTags(v));
+  function renderTags() {
+    $('tags').innerHTML = (C.COMPANIES || []).map(c =>
+      `<button type="button" data-name="${Booth.esc(c)}">${Booth.esc(c)}</button>`).join('');
+    $('tags').querySelectorAll('button').forEach(b => b.onclick = () => {
+      $('affil').value = b.dataset.name;
+      $('affil').dispatchEvent(new Event('input'));
+      $('affil').focus();
+    });
+  }
+  function filterTags(v) {
+    const q = v.trim().toLowerCase();
+    let shown = 0;
+    $('tags').querySelectorAll('button').forEach(b => {
+      const n = b.dataset.name.toLowerCase();
+      const show = !q || n.includes(q) || n === q;
+      b.hidden = !show;
+      b.classList.toggle('on', n === q);
+      if (show) shown++;
+    });
+    $('tags').hidden = !shown;
+  }
+  renderTags();
+
   function reset() {
     photoBlob = null; savedId = null;
-    $('name').value = ''; $('affil').value = '';
+    nameIn.reset(); affilIn.reset();
     $('nameNext').disabled = true;
     go('live');
   }
@@ -444,7 +565,7 @@
   $('restart').onclick = reset;
   $('addArchive').onclick = async () => {
     const b = $('addArchive');
-    if (b.dataset.done) { window.open('archive.html#' + savedId, 'archive'); return; }
+    if (b.dataset.done) { openArchive('#' + savedId); return; }
     b.disabled = true;
     b.textContent = '추가하는 중…';
     const { error } = await db.rpc('archive_photo', { p_id: savedId });
@@ -454,6 +575,55 @@
     b.textContent = '✓ 추가됨 · 아카이브 보기';
   };
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => go(b.dataset.back));
+
+  // ---------- 갤러리 (같은 페이지 위에 띄움) ----------
+  const frame = $('archiveFrame');
+  function openArchive(hash = '') {
+    if (!frame.src) frame.src = 'archive.html' + hash;
+    else if (hash) frame.contentWindow.location.hash = hash;
+    archiveOpen = true;
+    $('archiveLayer').classList.add('open');
+    frame.focus();
+  }
+  function closeArchive() {
+    archiveOpen = false;
+    $('archiveLayer').classList.remove('open');
+    window.focus();
+  }
+  $('galleryBtn').onclick = e => { e.preventDefault(); openArchive(); };
+  addEventListener('message', e => {
+    if (e.origin === location.origin && e.data && e.data.type === 'booth:close-archive') closeArchive();
+  });
+
+  // ---------- 전체화면 + 숨김 툴바 ----------
+  const nativeFull = () => innerHeight >= screen.height - 2 && innerWidth >= screen.width - 2;
+  const enterFs = () => { if (!document.fullscreenElement && !nativeFull()) document.documentElement.requestFullscreen?.().catch(() => {}); };
+  const toggleFs = () => document.fullscreenElement ? document.exitFullscreen() : enterFs();
+  // 브라우저 정책상 첫 클릭/키 입력 때 전체화면으로 전환 (페이지 열자마자는 불가)
+  let autoFsDone = false;
+  const autoFs = e => {
+    if (autoFsDone) return;
+    autoFsDone = true;
+    if (e.target.closest && e.target.closest('.toolbar')) return;
+    enterFs();
+  };
+  document.addEventListener('pointerdown', autoFs, true);
+  document.addEventListener('keydown', autoFs, true);
+
+  const toolbar = $('toolbar');
+  let tbTimer = null;
+  const showToolbar = ms => {
+    toolbar.classList.add('show');
+    clearTimeout(tbTimer);
+    if (ms) tbTimer = setTimeout(() => { if (!toolbar.matches(':hover')) toolbar.classList.remove('show'); }, ms);
+  };
+  addEventListener('mousemove', e => { if (e.clientY <= 6) showToolbar(); });
+  toolbar.addEventListener('mouseleave', () => showToolbar(400));
+  document.addEventListener('fullscreenchange', () => {
+    $('fsBtn').textContent = document.fullscreenElement ? '전체화면 끄기' : '전체화면';
+    if (!document.fullscreenElement) showToolbar(3000);   // Esc로 나왔을 때 다시 켤 수 있게
+  });
+  $('fsBtn').onclick = toggleFs;
 
   document.addEventListener('keydown', e => {
     const typing = e.target.tagName === 'INPUT' && e.target.type === 'text';
@@ -476,7 +646,7 @@
     } else if (e.key === 's' || e.key === 'S' || e.key === 'ㄴ') {
       toggleSettings(!$('settings').classList.contains('open'));
     } else if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') {
-      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      toggleFs();
     }
   });
 })();

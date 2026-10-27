@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027112008">
+<link rel="stylesheet" href="style.css?v=20261027113913">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -146,9 +146,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027112008"></script>
-<script src="lib/supabase.min.js?v=20261027112008"></script>
-<script src="common.js?v=20261027112008"></script>
+<script src="config.js?v=20261027113913"></script>
+<script src="lib/supabase.min.js?v=20261027113913"></script>
+<script src="common.js?v=20261027113913"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -381,7 +381,19 @@
   }
   const closeLightbox = () => { $('lb').classList.remove('open'); lbNode = null; };
   $('lb').onclick = closeLightbox;
-  addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+  // 촬영 화면 위에 띄워졌을 때: 셔터 버튼/ESC → 페이지 이동 없이 닫기 (전체화면 유지)
+  const embedded = window.parent !== window;
+  const closeEmbedded = () => parent.postMessage({ type: 'booth:close-archive' }, location.origin);
+  document.querySelector('.back').addEventListener('click', e => {
+    if (!embedded) return;
+    e.preventDefault();
+    closeEmbedded();
+  });
+  addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if ($('lb').classList.contains('open')) closeLightbox();
+    else if (embedded) closeEmbedded();
+  });
 
   // archive.html#<id> 로 열면 해당 사진으로 이동
   function focusHash() {
