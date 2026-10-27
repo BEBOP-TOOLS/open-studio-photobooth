@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027145002">
+<link rel="stylesheet" href="style.css?v=20261027145736">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -146,8 +146,8 @@
   /* 미리보기 모드: 촬영 완료 화면 뒤에 깔리는 갤러리 */
   body.preview .stage { pointer-events: none; }
   body.preview .back, body.preview .admin-link, body.preview .cursor,
-  body.preview .bottom-fade, body.preview .label { opacity: 0; pointer-events: none; }
-  .back, .admin-link, .bottom-fade { transition: opacity .4s ease; }
+  body.preview .bottom-fade, body.preview .label, body.preview .top { opacity: 0; pointer-events: none; }
+  .back, .admin-link, .bottom-fade, .top { transition: opacity .4s ease; }
 </style>
 </head>
 <body>
@@ -194,10 +194,10 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027145002"></script>
-<script src="lib/supabase.min.js?v=20261027145002"></script>
-<script src="lib/qrcode.min.js?v=20261027145002"></script>
-<script src="common.js?v=20261027145002"></script>
+<script src="config.js?v=20261027145736"></script>
+<script src="lib/supabase.min.js?v=20261027145736"></script>
+<script src="lib/qrcode.min.js?v=20261027145736"></script>
+<script src="common.js?v=20261027145736"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;

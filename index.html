@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027145002">
+<link rel="stylesheet" href="style.css?v=20261027145736">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -197,8 +197,34 @@
   }
   .throw-photo.dragging { cursor: grabbing; }
   .throw-photo img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-  .throw-hint { font-family: var(--mono); font-size: 13px; color: var(--muted); margin: 0; letter-spacing: .02em; }
-  .throw-hint.ok { color: #fff; }
+  /* 사진 → 갤러리 방향 화살표: 아래에서 위로 그라디언트로 자라났다 사라지길 반복 */
+  .throw-cue { position: relative; width: 24px; height: 120px; margin-bottom: -6px; transition: opacity .3s; }
+  .throw-cue.hide { opacity: 0; }
+  .cue-line {
+    position: absolute; left: 50%; bottom: 0; width: 2px; height: 100%; margin-left: -1px; border-radius: 2px;
+    background: linear-gradient(to top, rgba(255,255,255,0), #fff);
+    filter: drop-shadow(0 0 6px rgba(255,255,255,.7));
+    transform-origin: bottom; animation: cue-grow 1.9s cubic-bezier(.3, .7, .3, 1) infinite;
+  }
+  .cue-head {
+    position: absolute; left: 0; top: -2px; width: 24px; height: 14px;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,.7));
+    animation: cue-head 1.9s cubic-bezier(.3, .7, .3, 1) infinite;
+  }
+  @keyframes cue-grow {
+    0% { transform: scaleY(0); opacity: 1; }
+    55% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 0; }
+  }
+  @keyframes cue-head {
+    0%, 35% { opacity: 0; transform: translateY(10px); }
+    55% { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: translateY(-4px); }
+  }
+  .throw-hint {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap;
+    font-family: var(--mono); font-size: 13px; color: #fff; margin: 0; letter-spacing: .02em;
+  }
   .done-bottom { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
   .done-bottom .qr { width: 92px !important; height: 92px; padding: 7px; border-radius: 10px; }
   .done-bottom p { font-family: var(--mono); font-size: 13px; line-height: 1.5; margin: 0; text-align: left; color: #fff; }
@@ -343,9 +369,13 @@
 </section>
 
 <section class="step done-layer" data-step="done" id="doneLayer">
-  <h1 class="pop" id="doneTitle">Nice to meet you!</h1>
+  <div class="throw-cue pop" id="throwCue" aria-label="사진을 위로 밀어 갤러리에 추가">
+    <div class="cue-line"></div>
+    <svg class="cue-head" viewBox="0 0 24 14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l8-9 8 9"/></svg>
+    <p class="throw-hint" id="throwHint"></p>
+  </div>
   <div class="throw-photo pop" id="throwPhoto"><img id="throwImg" alt=""></div>
-  <p class="throw-hint pop" id="throwHint">↑ swipe up to add it to the gallery</p>
+  <h1 class="pop" id="doneTitle">Nice to meet you!</h1>
   <div class="done-bottom pop">
     <div class="qr" id="qr"></div>
     <p>scan and download<br>your image</p>
@@ -382,12 +412,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027145002"></script>
-<script src="lib/supabase.min.js?v=20261027145002"></script>
-<script src="lib/qrcode.min.js?v=20261027145002"></script>
-<script src="common.js?v=20261027145002"></script>
-<script src="filter.js?v=20261027145002"></script>
-<script src="hangul.js?v=20261027145002"></script>
+<script src="config.js?v=20261027145736"></script>
+<script src="lib/supabase.min.js?v=20261027145736"></script>
+<script src="lib/qrcode.min.js?v=20261027145736"></script>
+<script src="common.js?v=20261027145736"></script>
+<script src="filter.js?v=20261027145736"></script>
+<script src="hangul.js?v=20261027145736"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -630,12 +660,14 @@
   // ---------- 완료: 사진을 위로 밀어 갤러리에 던져 넣기 ----------
   const tp = $('throwPhoto');
   let thrown = false, td = null;
-  const HINT = '↑ swipe up to add it to the gallery';
+  // 화살표만 보이다가, 던지고 나면 화살표 대신 짧은 확인 문구
+  const showCue = on => $('throwCue').querySelectorAll('.cue-line, .cue-head').forEach(el => el.style.display = on ? '' : 'none');
   function resetThrow() {
     thrown = false;
     tp.style.transition = ''; tp.style.transform = ''; tp.style.visibility = '';
-    $('throwHint').textContent = HINT;
-    $('throwHint').classList.remove('ok');
+    $('throwHint').textContent = '';
+    $('throwCue').classList.remove('hide');
+    showCue(true);
   }
   tp.addEventListener('pointerdown', e => {
     if (thrown) return;
@@ -643,6 +675,7 @@
     td = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), vx: 0, vy: 0 };
     tp.style.transition = 'none';
     tp.classList.add('dragging');
+    $('throwCue').classList.add('hide');
   });
   tp.addEventListener('pointermove', e => {
     if (!td || e.pointerId !== td.id) return;
@@ -659,7 +692,10 @@
     const dy = e.clientY - td.sy, { vx, vy } = td;
     td = null;
     if (vy < -600 || dy < -150) throwIt(vx, vy);
-    else { tp.style.transition = 'transform .55s cubic-bezier(.2, 1.5, .4, 1)'; tp.style.transform = ''; }
+    else {
+      tp.style.transition = 'transform .55s cubic-bezier(.2, 1.5, .4, 1)'; tp.style.transform = '';
+      $('throwCue').classList.remove('hide');
+    }
   }
   tp.addEventListener('pointerup', endThrowDrag);
   tp.addEventListener('pointercancel', endThrowDrag);
@@ -689,12 +725,13 @@
       if (t < 1) return requestAnimationFrame(step);
       fly.remove();
       frame.contentWindow?.postMessage({ type: 'booth:insert', photo: lastPhoto }, location.origin);
+      showCue(false);
       $('throwHint').textContent = 'added to the gallery ✓';
-      $('throwHint').classList.add('ok');
+      $('throwCue').classList.remove('hide');
     })(start);
 
     db.rpc('archive_photo', { p_id: savedId }).then(({ error }) => {
-      if (error) { $('throwHint').textContent = 'couldn’t add — try again'; thrown = false; tp.style.visibility = ''; tp.style.transform = ''; }
+      if (error) { resetThrow(); $('throwHint').textContent = 'try again'; showCue(false); }
     });
   }
 
