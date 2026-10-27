@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027144302">
+<link rel="stylesheet" href="style.css?v=20261027144634">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -93,11 +93,17 @@
     transform-style: preserve-3d; transition: transform .9s cubic-bezier(.3, 1.3, .4, 1);
   }
   .flip.flipped { transform: rotateY(180deg); }
+  /* 사진 위에서는 커서 대신 flip 아이콘 */
+  .flip { cursor: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2236%22%20height%3D%2236%22%20viewBox%3D%22-2%20-2%2028%2028%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cg%20stroke%3D%22%23000%22%20stroke-width%3D%223.6%22%20stroke-opacity%3D%22.55%22%3E%3Cpath%20d%3D%22M4%2011a8%208%200%200%201%2014-4.5L20%208.5%22/%3E%3Cpath%20d%3D%22M20%204v4.5h-4.5%22/%3E%3Cpath%20d%3D%22M20%2013a8%208%200%200%201-14%204.5L4%2015.5%22/%3E%3Cpath%20d%3D%22M4%2020v-4.5h4.5%22/%3E%3C/g%3E%3Cg%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%3E%3Cpath%20d%3D%22M4%2011a8%208%200%200%201%2014-4.5L20%208.5%22/%3E%3Cpath%20d%3D%22M20%204v4.5h-4.5%22/%3E%3Cpath%20d%3D%22M20%2013a8%208%200%200%201-14%204.5L4%2015.5%22/%3E%3Cpath%20d%3D%22M4%2020v-4.5h4.5%22/%3E%3C/g%3E%3C/svg%3E") 18 18, pointer; }
   .face { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  /* 뒷면: 같은 사진을 뒤에서 본 것처럼(좌우 반전) + 50% 블랙 */
   .face.face-back {
-    transform: rotateY(180deg); background: #0b0b0b; border: 1px solid rgba(255,255,255,.18);
+    transform: rotateY(180deg); overflow: hidden;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5%;
   }
+  .face.face-back > img { position: absolute; inset: 0; transform: scaleX(-1); z-index: 0; }
+  .face.face-back::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: 1; }
+  .face.face-back > :not(img) { position: relative; z-index: 2; }
   .face.face-back .qrbox { width: 36%; aspect-ratio: 1 / 1; background: #fff; padding: 3%; border-radius: 6%; }
   .face.face-back .qrbox svg { width: 100%; height: 100%; display: block; }
   .face.face-back p { font-size: 15px; line-height: 1.5; color: #fff; }
@@ -107,7 +113,7 @@
     display: grid; place-items: center; color: #fff; background: transparent;
   }
   .flip-btn svg { transition: transform .9s cubic-bezier(.2, .8, .2, 1); }
-  .flip-btn:hover svg { transform: rotate(180deg); }
+  .flip-btn:hover svg { transform: translateX(-3px); }
   .lightbox p { text-align: center; font-family: var(--mono); font-size: 18px; margin: 0; }
   .lightbox p span { color: var(--muted); margin-left: 8px; }
   .admin-actions { display: none; gap: 8px; }
@@ -159,14 +165,13 @@
     <div class="flip-scene">
       <div class="flip" id="lbFlip">
         <div class="face front" id="lbWrap"><img id="lbImg" alt=""></div>
-        <div class="face face-back"><div class="qrbox" id="lbQr"></div><p>scan and download<br>your image</p></div>
+        <div class="face face-back"><img id="lbImgBack" alt=""><div class="qrbox" id="lbQr"></div><p>scan and download<br>your image</p></div>
       </div>
     </div>
     <p id="lbCap"></p>
-    <button class="flip-btn" id="lbFlipBtn" type="button" aria-label="뒤집기">
+    <button class="flip-btn" id="lbBack" type="button" aria-label="갤러리로 돌아가기">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 11a8 8 0 0 1 14-4.5L20 8.5"/><path d="M20 4v4.5h-4.5"/>
-        <path d="M20 13a8 8 0 0 1-14 4.5L4 15.5"/><path d="M4 20v-4.5h4.5"/>
+        <path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>
       </svg>
     </button>
     <div class="admin-actions">
@@ -189,10 +194,10 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027144302"></script>
-<script src="lib/supabase.min.js?v=20261027144302"></script>
-<script src="lib/qrcode.min.js?v=20261027144302"></script>
-<script src="common.js?v=20261027144302"></script>
+<script src="config.js?v=20261027144634"></script>
+<script src="lib/supabase.min.js?v=20261027144634"></script>
+<script src="lib/qrcode.min.js?v=20261027144634"></script>
+<script src="common.js?v=20261027144634"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -451,7 +456,7 @@
   let lbNode = null;
   function openLightbox(n) {
     lbNode = n;
-    $('lbImg').src = photoUrl(n.p.path);
+    $('lbImg').src = $('lbImgBack').src = photoUrl(n.p.path);
     $('lbFlip').classList.remove('flipped');
     const qr = qrcode(0, 'M');
     qr.addData(Booth.shareUrl(n.p.id));
@@ -465,8 +470,8 @@
   const closeLightbox = () => { $('lb').classList.remove('open'); lbNode = null; };
   // 사진·버튼 바깥을 누르면 닫힘, 사진이나 flip 버튼을 누르면 뒤집힘
   $('lb').onclick = e => {
-    if (e.target.closest('.flip, #lbFlipBtn')) { $('lbFlip').classList.toggle('flipped'); return; }
-    if (!e.target.closest('button')) closeLightbox();
+    if (e.target.closest('.flip')) { $('lbFlip').classList.toggle('flipped'); return; }
+    if (e.target.closest('#lbBack') || !e.target.closest('button')) closeLightbox();
   };
   // 촬영 화면 위에 띄워졌을 때: 셔터 버튼/ESC → 페이지 이동 없이 닫기 (전체화면 유지)
   const embedded = window.parent !== window;
