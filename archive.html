@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027143533">
+<link rel="stylesheet" href="style.css?v=20261027143752">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -17,10 +17,10 @@
   }
   .welcome {
     margin: 0; color: #fff; font-size: 1em; font-weight: 500;
-    display: inline-flex; flex-direction: column; align-items: center; gap: .28em;
+    display: inline-flex; flex-direction: column; align-items: flex-start; gap: .28em;
   }
-  /* 작은 WELCOME TO 위, BEBOP. 로고 아래 */
-  .welcome span { font-family: var(--mono); font-size: .3em; letter-spacing: .24em; }
+  /* 작은 WELCOME TO 위, BEBOP. 로고 아래 — 글자 간격을 벌려 B 왼쪽 끝 ~ P 오른쪽 끝에 맞춤 */
+  .welcome span { font-family: var(--mono); font-size: .3em; display: flex; justify-content: space-between; white-space: pre; }
   .welcome img { height: .8em; width: auto; display: block; }
 
   /* 촬영으로 돌아가기 (작은 셔터 모양) */
@@ -158,14 +158,31 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027143533"></script>
-<script src="lib/supabase.min.js?v=20261027143533"></script>
-<script src="common.js?v=20261027143533"></script>
+<script src="config.js?v=20261027143752"></script>
+<script src="lib/supabase.min.js?v=20261027143752"></script>
+<script src="common.js?v=20261027143752"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
   const $ = id => document.getElementById(id);
-  $('welcome').innerHTML = `<span>${esc(C.WELCOME_TEXT)}</span><img src="assets/bebop-logo.svg" alt="BEBOP.">`;
+  $('welcome').innerHTML = `<span>${[...C.WELCOME_TEXT].map(ch => `<i style="font-style:normal">${esc(ch)}</i>`).join('')}</span><img src="assets/bebop-logo.svg" alt="BEBOP.">`;
+  // 로고 SVG(viewBox 너비 497.4) 안에서 B 왼쪽 끝 = 1.0, P 오른쪽 끝 = 478.8
+  const LOGO_B_LEFT = 1.0 / 497.4, LOGO_P_RIGHT = 478.8 / 497.4;
+  function alignWelcome() {
+    const span = $('welcome').querySelector('span'), img = $('welcome').querySelector('img');
+    const w = img.getBoundingClientRect().width;
+    if (!w) return;
+    const cs = getComputedStyle(span), ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const t = C.WELCOME_TEXT, first = ctx.measureText(t[0]), last = ctx.measureText(t[t.length - 1]);
+    const lb = -first.actualBoundingBoxLeft;                 // 첫 글자 왼쪽 여백
+    const rb = last.width - last.actualBoundingBoxRight;     // 마지막 글자 오른쪽 여백
+    span.style.marginLeft = (w * LOGO_B_LEFT - lb) + 'px';
+    span.style.width = (w * (LOGO_P_RIGHT - LOGO_B_LEFT) + lb + rb) + 'px';
+  }
+  $('welcome').querySelector('img').addEventListener('load', alignWelcome);
+  document.fonts.ready.then(alignWelcome);
+  addEventListener('resize', alignWelcome);
   Booth.ringText($('lbWrap'));
 
   // ---------- 설정 ----------
