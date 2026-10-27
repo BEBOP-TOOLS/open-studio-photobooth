@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261026233144">
+<link rel="stylesheet" href="style.css?v=20261027112008">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -83,8 +83,12 @@
   .lightbox img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
   .lightbox p { text-align: center; font-size: 20px; margin: 0; }
   .lightbox p span { color: var(--muted); margin-left: 8px; }
-  .lightbox .del { display: none; padding: 8px 18px; font-size: 14px; border-color: var(--danger); color: var(--danger); }
-  body.admin .lightbox .del { display: block; }
+  .admin-actions { display: none; gap: 8px; }
+  body.admin .admin-actions { display: flex; }
+  .admin-actions button { padding: 8px 18px; font-size: 14px; }
+  .admin-actions .del { border-color: var(--danger); color: var(--danger); }
+  .cell.is-hidden { opacity: .25; }
+  .hidden-tag { color: var(--danger); font-size: 14px; margin-left: 8px; }
 
   /* 관리자 로그인 */
   dialog {
@@ -122,7 +126,10 @@
   <div class="inner">
     <div class="photo-wrap" id="lbWrap"><img id="lbImg" alt=""></div>
     <p id="lbCap"></p>
-    <button class="del" id="lbDel" type="button">이 사진 삭제</button>
+    <div class="admin-actions">
+      <button id="lbHide" type="button">숨기기</button>
+      <button class="del" id="lbDel" type="button">완전 삭제</button>
+    </div>
   </div>
 </div>
 
@@ -139,9 +146,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261026233144"></script>
-<script src="lib/supabase.min.js?v=20261026233144"></script>
-<script src="common.js?v=20261026233144"></script>
+<script src="config.js?v=20261027112008"></script>
+<script src="lib/supabase.min.js?v=20261027112008"></script>
+<script src="common.js?v=20261027112008"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -367,7 +374,9 @@
   function openLightbox(n) {
     lbNode = n;
     $('lbImg').src = photoUrl(n.p.path);
-    $('lbCap').innerHTML = esc(n.p.name) + (n.p.affiliation ? `<span>${esc(n.p.affiliation)}</span>` : '');
+    $('lbCap').innerHTML = esc(n.p.name) + (n.p.affiliation ? `<span>${esc(n.p.affiliation)}</span>` : '')
+      + (n.p.hidden ? '<b class="hidden-tag">숨김</b>' : '');
+    $('lbHide').textContent = n.p.hidden ? '다시 보이기' : '숨기기';
     $('lb').classList.add('open');
   }
   const closeLightbox = () => { $('lb').classList.remove('open'); lbNode = null; };
@@ -390,10 +399,12 @@
 
   // ---------- 관리자 ----------
   const dlg = $('loginDlg'), adminLink = $('adminLink');
+  let isAdmin = false;
   async function refreshAdmin() {
     const { data: { session } } = await db.auth.getSession();
     let ok = false;
     if (session) ok = (await db.rpc('is_admin')).data === true;
+    isAdmin = ok;
     document.body.classList.toggle('admin', ok);
     adminLink.textContent = session ? (ok ? '관리자 로그아웃' : '로그아웃 (권한 없음)') : '관리자';
     return { session, ok };
@@ -401,7 +412,7 @@
   adminLink.onclick = async e => {
     e.preventDefault();
     const { session } = await refreshAdmin();
-    if (session) { await db.auth.signOut(); refreshAdmin(); return; }
+    if (session) { await db.auth.signOut(); location.reload(); return; }
     $('loginMsg').textContent = '';
     dlg.showModal();
   };
@@ -414,16 +425,43 @@
     if (error) { msg.textContent = '로그인 실패: ' + error.message; return; }
     const { ok } = await refreshAdmin();
     if (!ok) { msg.textContent = '관리자로 등록된 계정이 아니에요.'; return; }
-    $('pw').value = '';
-    dlg.close();
+    location.reload();
   };
+
+  // 숨기기 / 다시 보이기
+  $('lbHide').onclick = async e => {
+    e.stopPropagation();
+    const n = lbNode;
+    if (!n) return;
+    const hide = !n.p.hidden, btn = $('lbHide');
+    btn.disabled = true;
+    const { error } = await db.rpc('set_photo_hidden', { p_id: n.p.id, p_hidden: hide });
+    btn.disabled = false;
+    if (error) { alert('바꾸지 못했어요: ' + error.message); return; }
+    applyRow({ ...n.p, hidden: hide });
+    feed.send({ type: 'broadcast', event: 'visibility', payload: { ...n.p, hidden: hide } });
+    openLightbox(n);
+  };
+  // 행 변경 반영: 관리자는 숨긴 사진도 흐리게 보이고, 방문자에게선 사라짐
+  function applyRow(p) {
+    const n = nodes.find(n => n.p.id === p.id);
+    const visible = p.archived && (!p.hidden || isAdmin);
+    if (n && !visible) { removeNode(p.id); return; }
+    if (n) { n.p = p; n.el.classList.toggle('is-hidden', !!p.hidden); return; }
+    if (visible) {
+      $('empty')?.remove();
+      const m = addNode(p, true);
+      if (m) { m.el.classList.toggle('is-hidden', !!p.hidden); layout(); focusHash(); }
+    }
+  }
+
   $('lbDel').onclick = async e => {
     e.stopPropagation();
     const n = lbNode;
     if (!n || !confirm(`"${n.p.name}" 사진을 삭제할까요?\n사진 파일과 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
     const btn = $('lbDel');
     btn.disabled = true; btn.textContent = '삭제 중…';
-    const done = m => { btn.disabled = false; btn.textContent = '이 사진 삭제'; if (m) alert('삭제하지 못했어요: ' + m); };
+    const done = m => { btn.disabled = false; btn.textContent = '완전 삭제'; if (m) alert('삭제하지 못했어요: ' + m); };
     const rm = await db.storage.from(C.BUCKET).remove([n.p.path]);
     if (rm.error) return done(rm.error.message);
     const del = await db.from('photos').delete().eq('id', n.p.id).select('id');
@@ -433,7 +471,7 @@
     closeLightbox();
     removeNode(n.p.id);
   };
-  refreshAdmin();
+  await refreshAdmin();
 
   // ---------- 데이터 ----------
   measure();
@@ -452,15 +490,13 @@
   const list = demo && data.length
     ? Array.from({ length: demo }, (_, i) => ({ ...data[i % data.length], id: data[i % data.length].id + '-' + i }))
     : data;
-  for (const p of list) addNode(p, false);
+  for (const p of list) { const n = addNode(p, false); if (n && p.hidden) n.el.classList.add('is-hidden'); }
   layout();
   focusHash();
 
-  db.channel('photos-feed')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'photos', filter: 'archived=eq.true' }, ({ new: p }) => {
-      $('empty')?.remove();
-      if (addNode(p, true)) { layout(); focusHash(); }
-    })
+  const feed = db.channel('photos-feed')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'photos', filter: 'archived=eq.true' }, ({ new: p }) => applyRow(p))
+    .on('broadcast', { event: 'visibility' }, ({ payload }) => applyRow(payload))
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'photos' }, ({ old }) => removeNode(old.id))
     .subscribe();
 })();
