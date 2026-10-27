@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027142745">
+<link rel="stylesheet" href="style.css?v=20261027142929">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
   /* 상단 오버레이 */
   .top {
     position: fixed; top: 0; left: 0; right: 0; z-index: 3;
-    padding: 28px 24px 56px; pointer-events: none; text-align: center;
+    padding: 64px 24px 72px; pointer-events: none; text-align: center;
     background: linear-gradient(#000 0%, rgba(0,0,0,.8) 40%, transparent);
   }
   .welcome {
-    margin: 0; color: #fff; font-family: var(--mono); font-size: 20px; font-weight: 500; letter-spacing: .08em;
+    margin: 0; color: #fff; font-family: var(--mono); font-size: 34px; font-weight: 500; letter-spacing: .06em;
     display: inline-flex; align-items: baseline; gap: .55em;
   }
   .welcome img { height: .74em; width: auto; display: block; align-self: center; transform: translateY(-.02em); }
@@ -110,8 +110,8 @@
   dialog .msg { color: var(--danger); font-size: 14px; min-height: 20px; margin: 4px 0 0; }
 
   @media (max-width: 600px) {
-    .top { padding: 20px 16px 40px; }
-    .welcome { font-size: 17px; }
+    .top { padding: 36px 16px 48px; }
+    .welcome { font-size: 22px; }
   }
   @media (hover: none) { .stage { cursor: auto; } }
 
@@ -156,9 +156,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027142745"></script>
-<script src="lib/supabase.min.js?v=20261027142745"></script>
-<script src="common.js?v=20261027142745"></script>
+<script src="config.js?v=20261027142929"></script>
+<script src="lib/supabase.min.js?v=20261027142929"></script>
+<script src="common.js?v=20261027142929"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
