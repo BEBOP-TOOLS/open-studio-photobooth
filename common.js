@@ -11,8 +11,22 @@
     return location.href.replace(/[^/]*([?#].*)?$/, '');
   }
 
+  // QR을 단순하게: 사진 id(UUID 36자)를 22자로 압축해 짧은 주소로 (…/p#xxxxxxxxxxxxxxxxxxxxxx)
+  function shortId(uuid) {
+    const hex = uuid.replace(/-/g, '');
+    const bytes = String.fromCharCode(...hex.match(/../g).map(h => parseInt(h, 16)));
+    return btoa(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function longId(s) {
+    try {
+      const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+      if (bin.length !== 16) return null;
+      const hex = [...bin].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    } catch { return null; }
+  }
   function shareUrl(id) {
-    return siteBase() + 'p.html?id=' + encodeURIComponent(id);
+    return siteBase() + 'p#' + shortId(id);
   }
 
   function esc(s) {
@@ -36,5 +50,5 @@
       </svg>`);
   }
 
-  window.Booth = { C, db, photoUrl, shareUrl, esc, ringText };
+  window.Booth = { C, db, photoUrl, shareUrl, longId, esc, ringText };
 })();

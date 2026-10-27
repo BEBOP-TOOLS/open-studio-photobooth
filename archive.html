@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027144634">
+<link rel="stylesheet" href="style.css?v=20261027145002">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -194,10 +194,10 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027144634"></script>
-<script src="lib/supabase.min.js?v=20261027144634"></script>
-<script src="lib/qrcode.min.js?v=20261027144634"></script>
-<script src="common.js?v=20261027144634"></script>
+<script src="config.js?v=20261027145002"></script>
+<script src="lib/supabase.min.js?v=20261027145002"></script>
+<script src="lib/qrcode.min.js?v=20261027145002"></script>
+<script src="common.js?v=20261027145002"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -458,7 +458,7 @@
     lbNode = n;
     $('lbImg').src = $('lbImgBack').src = photoUrl(n.p.path);
     $('lbFlip').classList.remove('flipped');
-    const qr = qrcode(0, 'M');
+    const qr = qrcode(0, 'L');
     qr.addData(Booth.shareUrl(n.p.id));
     qr.make();
     $('lbQr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
