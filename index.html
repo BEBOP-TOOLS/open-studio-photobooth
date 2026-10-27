@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027141744">
+<link rel="stylesheet" href="style.css?v=20261027142745">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -206,6 +206,19 @@
   .flying { position: fixed; left: 0; top: 0; z-index: 17; border-radius: 50%; overflow: hidden; pointer-events: none; }
   .flying img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+  /* 꾹 눌러 전체화면: 누르는 동안 원이 차오름 */
+  .hold {
+    position: fixed; left: 0; top: 0; z-index: 30; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  .hold.on { opacity: 1; }
+  .hold circle { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+  .hold .bg { stroke: rgba(255,255,255,.25); }
+  .hold span {
+    position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 11px; white-space: nowrap; color: #fff;
+  }
+
   /* 숨김 툴바: 화면 맨 위로 커서를 올리면 나타남 */
   .toolbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 20;
@@ -340,6 +353,13 @@
   <button class="side tool" id="restart" aria-label="처음으로" data-tip="new photo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/></svg></button>
 </section>
 
+<div class="hold" id="hold">
+  <svg viewBox="0 0 64 64" width="64" height="64">
+    <circle class="bg" cx="32" cy="32" r="26"/>
+    <circle id="holdArc" cx="32" cy="32" r="26" transform="rotate(-90 32 32)" stroke-dasharray="163.4" stroke-dashoffset="163.4"/>
+  </svg>
+  <span id="holdLabel">fullscreen</span>
+</div>
 <div class="toolbar" id="toolbar">
   <button id="fsBtn" type="button">전체화면</button>
   <button id="gear" type="button">효과 설정</button>
@@ -362,12 +382,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027141744"></script>
-<script src="lib/supabase.min.js?v=20261027141744"></script>
-<script src="lib/qrcode.min.js?v=20261027141744"></script>
-<script src="common.js?v=20261027141744"></script>
-<script src="filter.js?v=20261027141744"></script>
-<script src="hangul.js?v=20261027141744"></script>
+<script src="config.js?v=20261027142745"></script>
+<script src="lib/supabase.min.js?v=20261027142745"></script>
+<script src="lib/qrcode.min.js?v=20261027142745"></script>
+<script src="common.js?v=20261027142745"></script>
+<script src="filter.js?v=20261027142745"></script>
+<script src="hangul.js?v=20261027142745"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -741,10 +761,11 @@
   const enterFs = () => { if (!document.fullscreenElement && !nativeFull()) document.documentElement.requestFullscreen?.().catch(() => {}); };
   const toggleFs = () => document.fullscreenElement ? document.exitFullscreen() : enterFs();
   // 브라우저 정책상 첫 클릭/키 입력 때 전체화면으로 전환 (페이지 열자마자는 불가)
-  let autoFsDone = false;
+  let autoFsDone = false, autoFsAt = -1;
   const autoFs = e => {
     if (autoFsDone) return;
     autoFsDone = true;
+    autoFsAt = performance.now();
     if (e.target.closest && e.target.closest('.toolbar')) return;
     enterFs();
   };
@@ -765,6 +786,42 @@
     if (!document.fullscreenElement) showToolbar(3000);   // Esc로 나왔을 때 다시 켤 수 있게
   });
   $('fsBtn').onclick = toggleFs;
+
+  // 빈 곳을 꾹 누르면(0.7초) 전체화면 켜기/끄기
+  const HOLD_MS = 700, CIRC = 163.4;
+  let hold = null;
+  const cancelHold = () => {
+    if (!hold) return;
+    cancelAnimationFrame(hold.raf);
+    hold = null;
+    $('hold').classList.remove('on');
+  };
+  document.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest?.('button, a, input, label, .throw-photo, .settings, .toolbar, .tags')) return;
+    cancelHold();
+    hold = { x: e.clientX, y: e.clientY, t0: performance.now() };
+    $('hold').style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    $('holdLabel').textContent = document.fullscreenElement ? 'exit fullscreen' : 'fullscreen';
+    $('holdArc').style.strokeDashoffset = CIRC;
+    (function tick(now) {
+      if (!hold) return;
+      const k = Math.min((now - hold.t0) / HOLD_MS, 1);
+      if (k > 0.15) $('hold').classList.add('on');     // 짧은 클릭엔 표시 안 함
+      $('holdArc').style.strokeDashoffset = CIRC * (1 - k);
+      if (k >= 1) {
+        const justAuto = autoFsAt >= hold.t0 - 50;   // 이번 누름으로 이미 자동 전체화면이 켜지는 중이면 그대로 둠
+        cancelHold();
+        if (!justAuto) toggleFs();
+        return;
+      }
+      hold.raf = requestAnimationFrame(tick);
+    })(hold.t0);
+  });
+  document.addEventListener('pointermove', e => {
+    if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 10) cancelHold();
+  });
+  document.addEventListener('pointerup', cancelHold);
+  document.addEventListener('pointercancel', cancelHold);
 
   document.addEventListener('keydown', e => {
     const typing = e.target.tagName === 'INPUT' && e.target.type === 'text';
