@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Booth</title>
-<link rel="stylesheet" href="style.css?v=20261027124318">
+<link rel="stylesheet" href="style.css?v=20261027125825">
 <style>
   body { overflow: hidden; user-select: none; }
   .app {
@@ -88,14 +88,29 @@
   [data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); }
   [data-tip]:disabled::after { display: none; }
 
-  /* 촬영 후: 하트 */
-  .heart {
-    width: 84px; height: 84px; padding: 0; border-radius: 50%; border: 0;
-    background: #fff; color: #000; display: grid; place-items: center; position: relative;
+  /* 촬영 후: 다시 찍기 / 하트 (같은 크기, 가운데) */
+  .controls .review-row.active { gap: 28px; justify-content: center; }
+  .round {
+    width: 64px; height: 64px; padding: 0; border-radius: 50%; border: 1.5px solid #fff;
+    background: transparent; color: #fff; display: grid; place-items: center; position: relative;
   }
+  .round svg { transition: transform .9s cubic-bezier(.2, .8, .2, 1); }
+  .round.back:hover svg { transform: translateX(-3px); }
   .heart path { transition: fill .6s ease; }
   .heart:hover path { fill: currentColor; }
-  .heart:hover svg { transform: scale(1.08); }
+  .heart:hover svg { transform: scale(1.1); }
+
+  /* 오버레이가 뜰 때 '뽕' (짧게 올라오며 빠르게 페이드인) */
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(10px) scale(.97); }
+    to { opacity: 1; transform: none; }
+  }
+  .sheet.active > *, .done-layer.active > .pop {
+    animation: pop-in .36s cubic-bezier(.2, .9, .3, 1.25) both;
+  }
+  .sheet.active > :nth-child(2), .done-layer.active > .pop:nth-child(2) { animation-delay: .05s; }
+  .sheet.active > :nth-child(3), .done-layer.active > .pop:nth-child(3) { animation-delay: .1s; }
+  .sheet.active > :nth-child(4), .done-layer.active > .pop:nth-child(4) { animation-delay: .15s; }
 
   .shutter {
     width: 84px; height: 84px; padding: 0;
@@ -123,28 +138,41 @@
   /* 이름·소속 입력 */
   .sheet > .prompt, .sheet > .tags { width: min(680px, 100%); }
   .prompt { display: flex; align-items: baseline; gap: 18px; }
-  .lead { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+  .lead { font-family: var(--mono); font-size: 42px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
   .field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #fff; }
   .sheet .field input[type=text] {
     flex: 1; min-width: 0; width: auto; border: 0; text-align: left; font-size: 40px; padding: 4px 0;
+    font-family: var(--mono); font-weight: 500;
   }
   .ime {
-    flex: none; width: 34px; height: 30px; padding: 0; border-radius: 7px;
+    flex: none; width: 32px; height: 32px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(255,255,255,.45); background: transparent; color: #fff;
     font-size: 13px; font-weight: 600; opacity: .75;
   }
   .ime:hover { opacity: 1; }
   .icon-row { display: flex; justify-content: center; gap: 20px; }
   .sheet > .icon-row { width: auto; }
-  .hint { font-size: 15px !important; }
-  .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-height: 190px; overflow-y: auto; }
+  .tags {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    max-height: 210px; overflow-y: auto; padding: 8px 6px;
+  }
   .tags[hidden] { display: none; }
   .tags button {
-    padding: 7px 14px; font-size: 14px; font-weight: 500;
-    border-color: rgba(255,255,255,.3); transition: border-color .2s, background .2s, color .2s;
+    position: relative; padding: 7px 14px; font-size: 14px; font-weight: 500;
+    border-color: rgba(255,255,255,.3);
+    transition: border-color .2s, background .2s, color .2s, transform .25s cubic-bezier(.2, .8, .2, 1);
   }
   .tags button:hover { border-color: #fff; }
   .tags button.on { background: #fff; color: #000; border-color: #fff; }
+  .tags button.tick { animation: tick .22s ease-out; }
+  @keyframes tick { 40% { scale: 1.1; } 100% { scale: 1; } }
+  /* 선택된 태그 우측 상단 x */
+  .tags .x {
+    display: none; position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
+    border-radius: 50%; background: #000; color: #fff; border: 1px solid #fff;
+    font-size: 11px; line-height: 1; place-items: center;
+  }
+  .tags button.on .x { display: grid; }
   .sheet input[type=text]::placeholder { color: #4a4a4a; }
   .sheet h1 { font-size: 40px; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
   .sheet p { margin: 0; color: var(--muted); font-size: 17px; line-height: 1.6; }
@@ -152,9 +180,31 @@
   .row button { flex: 1; }
   .qr { width: 220px !important; height: 220px; background: #fff; padding: 12px; border-radius: 12px; }
   .qr svg, .qr img { width: 100%; height: 100%; display: block; }
-  #addArchive { width: 220px !important; padding: 12px 0; }
   .err { color: var(--danger) !important; }
 
+
+  /* 완료: 사진을 위로 밀어 갤러리에 던져 넣기 */
+  .done-layer.active {
+    display: flex; position: fixed; inset: 0; z-index: 16;
+    flex-direction: column; align-items: center; justify-content: flex-end; gap: 18px;
+    padding: 24px 24px 32px; touch-action: none;
+    background: linear-gradient(transparent 28%, rgba(0,0,0,.9) 46%, #000 60%);
+  }
+  .done-layer h1 { font-family: var(--mono); font-weight: 500; font-size: 30px; margin: 0; text-align: center; }
+  .throw-photo {
+    width: 180px; height: 180px; border-radius: 50%; overflow: hidden; cursor: grab;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.15); will-change: transform; touch-action: none;
+  }
+  .throw-photo.dragging { cursor: grabbing; }
+  .throw-photo img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .throw-hint { font-family: var(--mono); font-size: 13px; color: var(--muted); margin: 0; letter-spacing: .02em; }
+  .throw-hint.ok { color: #fff; }
+  .done-bottom { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+  .done-bottom .qr { width: 92px !important; height: 92px; padding: 7px; border-radius: 10px; }
+  .done-bottom p { font-family: var(--mono); font-size: 13px; line-height: 1.5; margin: 0; text-align: left; color: #fff; }
+  .done-layer #restart { position: absolute; right: 28px; bottom: 32px; }
+  .flying { position: fixed; left: 0; top: 0; z-index: 17; border-radius: 50%; overflow: hidden; pointer-events: none; }
+  .flying img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* 숨김 툴바: 화면 맨 위로 커서를 올리면 나타남 */
   .toolbar {
@@ -229,12 +279,9 @@
         </a>
       </div>
     </section>
-    <section class="step live-row" data-step="review">
-      <div class="side-wrap left">
-        <button class="side tool back" id="retake" aria-label="다시 찍기" data-tip="retake"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg></button>
-      </div>
-      <button class="heart" id="accept" aria-label="좋아요" data-tip="keep"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 20.3S4.5 15.7 4.5 10.1A4.2 4.2 0 0 1 12 7.5a4.2 4.2 0 0 1 7.5 2.6c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
-      <div class="side-wrap right"></div>
+    <section class="step review-row" data-step="review">
+      <button class="round back" id="retake" aria-label="다시 찍기" data-tip="retake"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg></button>
+      <button class="round heart" id="accept" aria-label="좋아요" data-tip="keep"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 20.3S4.5 15.7 4.5 10.1A4.2 4.2 0 0 1 12 7.5a4.2 4.2 0 0 1 7.5 2.6c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
     </section>
   </div>
 </div>
@@ -261,16 +308,15 @@
       <button type="button" class="ime" id="affilIme" title="한/영 전환">A</button>
     </label>
   </div>
-  <p class="hint">No affiliation? Feel free to skip.</p>
   <div class="tags" id="tags"></div>
-  <div class="row">
-    <button id="affilSkip">skip</button>
-    <button class="primary" id="affilDone">done</button>
+  <div class="icon-row">
+    <button class="side tool" id="affilSkip" aria-label="건너뛰기" data-tip="skip"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <button class="side solid" id="affilDone" aria-label="완료" data-tip="done"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
   </div>
 </section>
 
 <section class="step sheet" data-step="uploading">
-  <h1>저장하는 중…</h1>
+  <h1 class="mono" style="font-weight:500">Saving…</h1>
 </section>
 
 <section class="step sheet" data-step="error">
@@ -283,15 +329,15 @@
   <button class="ghost" id="saveLocal">사진 내려받기</button>
 </section>
 
-<section class="step sheet" data-step="done">
-  <h1 id="doneTitle">고마워요!</h1>
-  <div class="qr" id="qr"></div>
-  <button id="addArchive">아카이브 추가</button>
-  <p>폰 카메라로 QR을 찍으면 사진을 받고<br>인스타그램 스토리에 공유할 수 있어요.<br>아카이브 추가를 누르면 전시 아카이브에도 올라가요.</p>
-  <div class="row">
-    <button class="primary" id="restart">처음으로</button>
+<section class="step done-layer" data-step="done" id="doneLayer">
+  <h1 class="pop" id="doneTitle">Nice to meet you!</h1>
+  <div class="throw-photo pop" id="throwPhoto"><img id="throwImg" alt=""></div>
+  <p class="throw-hint pop" id="throwHint">↑ swipe up to add it to the gallery</p>
+  <div class="done-bottom pop">
+    <div class="qr" id="qr"></div>
+    <p>scan and download<br>your image</p>
   </div>
-  <p id="restartIn" style="font-size:14px"></p>
+  <button class="side tool" id="restart" aria-label="처음으로" data-tip="new photo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/></svg></button>
 </section>
 
 <div class="toolbar" id="toolbar">
@@ -316,12 +362,12 @@
   <p style="color:var(--muted)">S: 설정 열기/닫기 · F: 전체화면</p>
 </aside>
 
-<script src="config.js?v=20261027124318"></script>
-<script src="lib/supabase.min.js?v=20261027124318"></script>
-<script src="lib/qrcode.min.js?v=20261027124318"></script>
-<script src="common.js?v=20261027124318"></script>
-<script src="filter.js?v=20261027124318"></script>
-<script src="hangul.js?v=20261027124318"></script>
+<script src="config.js?v=20261027125825"></script>
+<script src="lib/supabase.min.js?v=20261027125825"></script>
+<script src="lib/qrcode.min.js?v=20261027125825"></script>
+<script src="common.js?v=20261027125825"></script>
+<script src="filter.js?v=20261027125825"></script>
+<script src="hangul.js?v=20261027125825"></script>
 <script>
 (function () {
   const { C, db, shareUrl } = window.Booth;
@@ -431,7 +477,7 @@
   })(0);
 
   // ---------- 흐름 ----------
-  let state = 'live', photoBlob = null, savedId = null, counting = false;
+  let state = 'live', photoBlob = null, savedId = null, lastPhoto = null, counting = false;
   let restartTimer = null, idleTimer = null;
 
   function go(next) {
@@ -442,6 +488,8 @@
     clearInterval(restartTimer);
     clearTimeout(idleTimer);
     if (['review', 'name', 'affil', 'error'].includes(next)) idleTimer = setTimeout(reset, 120000);
+    if (next === 'gallery') idleTimer = setTimeout(reset, 180000);
+    if (next === 'live' && archiveOpen) closeArchive();
     if (next === 'name') setTimeout(() => $('name').focus(), 50);
     if (next === 'affil') setTimeout(() => $('affil').focus(), 50);
   }
@@ -449,15 +497,37 @@
   // ---------- 이름·소속 입력 (한/영 전환 + 회사 태그) ----------
   const nameIn = HangulInput.attach($('name'), $('nameIme'), v => { $('nameNext').disabled = !v.trim(); });
   const affilIn = HangulInput.attach($('affil'), $('affilIme'), v => filterTags(v));
-  function renderTags() {
-    $('tags').innerHTML = (C.COMPANIES || []).map(c =>
-      `<button type="button" data-name="${Booth.esc(c)}">${Booth.esc(c)}</button>`).join('');
-    $('tags').querySelectorAll('button').forEach(b => b.onclick = () => {
-      $('affil').value = b.dataset.name;
-      $('affil').dispatchEvent(new Event('input'));
-      $('affil').focus();
-    });
+  let companies = [...(C.COMPANIES || [])];
+  function mergeCompanies(names) {
+    const seen = new Set(companies.map(c => c.toLowerCase()));
+    for (const n of names) if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); companies.push(n); }
   }
+  async function loadCompanies() {
+    const { data } = await db.rpc('list_affiliations');
+    if (data) { mergeCompanies(data.map(r => r.name)); renderTags(); }
+  }
+  const setAffil = v => { $('affil').value = v; $('affil').dispatchEvent(new Event('input')); $('affil').focus(); };
+  function renderTags() {
+    $('tags').innerHTML = companies.map(c =>
+      `<button type="button" data-name="${Booth.esc(c)}">${Booth.esc(c)}<span class="x" aria-label="지우기">×</span></button>`).join('');
+    $('tags').querySelectorAll('button').forEach(b => {
+      b.onclick = e => setAffil(e.target.closest('.x') ? '' : b.dataset.name);
+      b.addEventListener('pointerenter', () => {            // 지나갈 때 '톡'
+        b.classList.remove('tick'); void b.offsetWidth; b.classList.add('tick');
+      });
+    });
+    filterTags($('affil').value);
+  }
+  // 커서 근처 태그가 살짝 커지며 커서 쪽으로 끌려옴
+  $('tags').addEventListener('pointermove', e => {
+    $('tags').querySelectorAll('button:not([hidden])').forEach(b => {
+      const r = b.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const k = Math.max(0, 1 - Math.hypot(dx, dy) / 150);
+      b.style.transform = k ? `translate(${dx * k * 0.08}px, ${dy * k * 0.08}px) scale(${1 + k * 0.07})` : '';
+    });
+  });
+  $('tags').addEventListener('pointerleave', () => $('tags').querySelectorAll('button').forEach(b => b.style.transform = ''));
   function filterTags(v) {
     const q = v.trim().toLowerCase();
     let shown = 0;
@@ -471,9 +541,10 @@
     $('tags').hidden = !shown;
   }
   renderTags();
+  loadCompanies();
 
   function reset() {
-    photoBlob = null; savedId = null;
+    photoBlob = null; savedId = null; lastPhoto = null;
     nameIn.reset(); affilIn.reset();
     $('nameNext').disabled = true;
     go('live');
@@ -500,7 +571,9 @@
   async function upload() {
     go('uploading');
     const name = $('name').value.trim();
-    const affiliation = $('affil').value.trim() || null;
+    const typed = $('affil').value.trim();
+    // 목록에 있는 회사면 정식 표기로 저장 (heaz → HEAZ)
+    const affiliation = typed ? (companies.find(c => c.toLowerCase() === typed.toLowerCase()) || typed) : null;
     const id = crypto.randomUUID();
     const day = new Date().toISOString().slice(0, 10);
     const path = `${day}/${id}.jpg`;
@@ -515,6 +588,8 @@
       return;
     }
     savedId = id;
+    lastPhoto = { id, name, affiliation, path, created_at: new Date().toISOString() };
+    if (affiliation) { mergeCompanies([affiliation]); renderTags(); }
     showDone(name);
   }
 
@@ -523,18 +598,98 @@
     qr.addData(shareUrl(savedId));
     qr.make();
     $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
-    $('doneTitle').textContent = `고마워요, ${name}님!`;
-    delete $('addArchive').dataset.done;
-    $('addArchive').textContent = '아카이브 추가';
+    $('doneTitle').textContent = `Nice to meet you, ${name}!`;
+    $('throwImg').src = URL.createObjectURL(photoBlob);
+    resetThrow();
     go('done');
+    openArchive('', 'preview');
     let left = 90;
-    $('restartIn').textContent = `${left}초 뒤 처음 화면으로 돌아가요`;
-    restartTimer = setInterval(() => {
-      left--;
-      $('restartIn').textContent = `${left}초 뒤 처음 화면으로 돌아가요`;
-      if (left <= 0) reset();
-    }, 1000);
+    restartTimer = setInterval(() => { if (--left <= 0) reset(); }, 1000);
   }
+
+  // ---------- 완료: 사진을 위로 밀어 갤러리에 던져 넣기 ----------
+  const tp = $('throwPhoto');
+  let thrown = false, td = null;
+  const HINT = '↑ swipe up to add it to the gallery';
+  function resetThrow() {
+    thrown = false;
+    tp.style.transition = ''; tp.style.transform = ''; tp.style.visibility = '';
+    $('throwHint').textContent = HINT;
+    $('throwHint').classList.remove('ok');
+  }
+  tp.addEventListener('pointerdown', e => {
+    if (thrown) return;
+    try { tp.setPointerCapture(e.pointerId); } catch {}
+    td = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), vx: 0, vy: 0 };
+    tp.style.transition = 'none';
+    tp.classList.add('dragging');
+  });
+  tp.addEventListener('pointermove', e => {
+    if (!td || e.pointerId !== td.id) return;
+    const now = performance.now(), dt = Math.max(now - td.lt, 1) / 1000;
+    td.vx = td.vx * 0.5 + ((e.clientX - td.lx) / dt) * 0.5;
+    td.vy = td.vy * 0.5 + ((e.clientY - td.ly) / dt) * 0.5;
+    td.lx = e.clientX; td.ly = e.clientY; td.lt = now;
+    const dx = e.clientX - td.sx, dy = e.clientY - td.sy;
+    tp.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx * 0.05}deg)`;
+  });
+  function endThrowDrag(e) {
+    if (!td || e.pointerId !== td.id) return;
+    tp.classList.remove('dragging');
+    const dy = e.clientY - td.sy, { vx, vy } = td;
+    td = null;
+    if (vy < -600 || dy < -150) throwIt(vx, vy);
+    else { tp.style.transition = 'transform .55s cubic-bezier(.2, 1.5, .4, 1)'; tp.style.transform = ''; }
+  }
+  tp.addEventListener('pointerup', endThrowDrag);
+  tp.addEventListener('pointercancel', endThrowDrag);
+
+  function throwIt(vx, vy) {
+    thrown = true;
+    const r = tp.getBoundingClientRect();
+    const fly = document.createElement('div');
+    fly.className = 'flying';
+    fly.innerHTML = `<img src="${$('throwImg').src}" alt="">`;
+    document.body.appendChild(fly);
+    tp.style.visibility = 'hidden';
+
+    // 던진 속도를 살린 곡선으로 갤러리 가운데까지
+    const p0 = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const p2 = { x: innerWidth / 2, y: innerHeight * 0.25 };   // archive.html VIEW.preview.cy 와 맞춤
+    const p1 = { x: p0.x + vx * 0.18, y: Math.min(p0.y + vy * 0.18, p2.y + 40) };
+    const s0 = r.width, s1 = (innerWidth < 600 ? 104 : 195) * 0.8 * 0.62;
+    const T = 560, start = performance.now();
+    (function step(now) {
+      const t = Math.min((now - start) / T, 1), e = 1 - Math.pow(1 - t, 3), u = 1 - e;
+      const x = u * u * p0.x + 2 * u * e * p1.x + e * e * p2.x;
+      const y = u * u * p0.y + 2 * u * e * p1.y + e * e * p2.y;
+      const sz = s0 + (s1 - s0) * e;
+      fly.style.width = fly.style.height = sz + 'px';
+      fly.style.transform = `translate(${x - sz / 2}px, ${y - sz / 2}px) rotate(${(1 - e) * vx * 0.01}deg)`;
+      if (t < 1) return requestAnimationFrame(step);
+      fly.remove();
+      frame.contentWindow?.postMessage({ type: 'booth:insert', photo: lastPhoto }, location.origin);
+      $('throwHint').textContent = 'added to the gallery ✓';
+      $('throwHint').classList.add('ok');
+    })(start);
+
+    db.rpc('archive_photo', { p_id: savedId }).then(({ error }) => {
+      if (error) { $('throwHint').textContent = 'couldn’t add — try again'; thrown = false; tp.style.visibility = ''; tp.style.transform = ''; }
+    });
+  }
+
+  // 갤러리 쪽을 확대(핀치)하거나 더블클릭하면 갤러리 보기로
+  let pinch = 0;
+  function enterGallery() {
+    if (state !== 'done') return;
+    go('gallery');
+    openArchive('', 'full');
+  }
+  $('doneLayer').addEventListener('wheel', e => {
+    e.preventDefault();
+    if (e.ctrlKey && e.deltaY < 0) { pinch += -e.deltaY; if (pinch > 25) { pinch = 0; enterGallery(); } }
+  }, { passive: false });
+  $('doneLayer').addEventListener('dblclick', e => { if (e.clientY < innerHeight * 0.55) enterGallery(); });
 
   $('shutter').onclick = capture;
   $('retake').onclick = reset;
@@ -553,27 +708,22 @@
     a.click();
   };
   $('restart').onclick = reset;
-  $('addArchive').onclick = async () => {
-    const b = $('addArchive');
-    if (b.dataset.done) { openArchive('#' + savedId); return; }
-    b.disabled = true;
-    b.textContent = '추가하는 중…';
-    const { error } = await db.rpc('archive_photo', { p_id: savedId });
-    b.disabled = false;
-    if (error) { b.textContent = '다시 시도'; return; }
-    b.dataset.done = '1';
-    b.textContent = '✓ 추가됨 · 아카이브 보기';
-  };
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => go(b.dataset.back));
 
   // ---------- 갤러리 (같은 페이지 위에 띄움) ----------
+  // 미리 불러둠 (완료 화면 뒤에 바로 깔리도록)
   const frame = $('archiveFrame');
-  function openArchive(hash = '') {
-    if (!frame.src) frame.src = 'archive.html' + hash;
-    else if (hash) frame.contentWindow.location.hash = hash;
+  let archiveMode = 'preview';
+  const postMode = () => frame.contentWindow?.postMessage({ type: 'booth:mode', mode: archiveMode }, location.origin);
+  frame.addEventListener('load', postMode);
+  frame.src = 'archive.html?mode=preview';
+  function openArchive(hash = '', mode = 'full') {
+    archiveMode = mode;
+    postMode();
+    if (hash) frame.contentWindow.location.hash = hash;
     archiveOpen = true;
     $('archiveLayer').classList.add('open');
-    frame.focus();
+    if (mode === 'full') frame.focus();
   }
   function closeArchive() {
     archiveOpen = false;
@@ -582,7 +732,8 @@
   }
   $('galleryBtn').onclick = e => { e.preventDefault(); openArchive(); };
   addEventListener('message', e => {
-    if (e.origin === location.origin && e.data && e.data.type === 'booth:close-archive') closeArchive();
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'booth:close-archive') return;
+    if (state === 'done' || state === 'gallery') reset(); else closeArchive();
   });
 
   // ---------- 전체화면 + 숨김 툴바 ----------

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027124318">
+<link rel="stylesheet" href="style.css?v=20261027125825">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
@@ -110,6 +110,12 @@
     .welcome { font-size: 17px; }
   }
   @media (hover: none) { .stage { cursor: auto; } }
+
+  /* 미리보기 모드: 촬영 완료 화면 뒤에 깔리는 갤러리 */
+  body.preview .stage { pointer-events: none; }
+  body.preview .back, body.preview .admin-link, body.preview .cursor,
+  body.preview .bottom-fade, body.preview .label { opacity: 0; pointer-events: none; }
+  .back, .admin-link, .bottom-fade { transition: opacity .4s ease; }
 </style>
 </head>
 <body>
@@ -146,9 +152,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027124318"></script>
-<script src="lib/supabase.min.js?v=20261027124318"></script>
-<script src="common.js?v=20261027124318"></script>
+<script src="config.js?v=20261027125825"></script>
+<script src="lib/supabase.min.js?v=20261027125825"></script>
+<script src="common.js?v=20261027125825"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -161,6 +167,16 @@
   const HOVER_MULT = 6;               // 커서를 올렸을 때 배수
   const IMG_CROP = 1.12;              // 원 안에서 사진 확대 (검은 테두리 덜 보이게)
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 보기 모드: full = 갤러리, preview = 촬영 완료 화면 뒤 (작게, 위쪽)
+  let viewMode = new URLSearchParams(location.search).get('mode') === 'preview' ? 'preview' : 'full';
+  const VIEW = { full: { zoom: 1, cy: 0.5 }, preview: { zoom: 0.62, cy: 0.25 } };
+  let vz = VIEW[viewMode].zoom, vcy = VIEW[viewMode].cy;
+  function setViewMode(m) {
+    viewMode = m === 'preview' ? 'preview' : 'full';
+    document.body.classList.toggle('preview', viewMode === 'preview');
+    if (viewMode === 'preview') { pan.x = pan.y = 0; vel.x = vel.y = 0; panTarget = null; closeLightbox?.(); }
+  }
 
   const nodes = [];                    // 최신 사진이 가운데
   let W, H, D, SIZE, R, contentR = 0;
@@ -212,7 +228,7 @@
       p, el, img: el.firstChild,
       angle: Math.random() * 360,
       base: SPIN_MIN + Math.random() * (SPIN_MAX - SPIN_MIN),
-      speed: 0, hover: false,
+      speed: 0, hover: false, vx: 0, vy: 0,
     };
     n.speed = n.base;
     el.addEventListener('pointerenter', () => { if (!drag) { n.hover = true; showLabel(n); } });
@@ -335,17 +351,24 @@
       }
     }
 
+    const vk = 1 - Math.exp(-4 * dt);
+    vz += (VIEW[viewMode].zoom - vz) * vk;
+    vcy += (VIEW[viewMode].cy - vcy) * vk;
+
     const lk = 1 - Math.exp(-6 * dt), sk = 1 - Math.exp(-3 * dt);
+    const K = 70, DAMP = 10;           // 스프링 (DAMP가 작을수록 더 출렁임)
     for (const n of nodes) {
-      n.cx += (n.tx - n.cx) * lk; n.cy += (n.ty - n.cy) * lk;
+      n.vx += ((n.tx - n.cx) * K - n.vx * DAMP) * dt;
+      n.vy += ((n.ty - n.cy) * K - n.vy * DAMP) * dt;
+      n.cx += n.vx * dt; n.cy += n.vy * dt;
       if (n.pop !== undefined) { n.pop += (1 - n.pop) * lk; if (n.pop > 0.999) delete n.pop; }
 
       // 애플워치처럼: 화면 가운데는 크게, 가장자리로 갈수록 작고 촘촘하게
-      const sx = n.cx + pan.x, sy = n.cy + pan.y;
+      const sx = (n.cx + pan.x) * vz, sy = (n.cy + pan.y) * vz;
       const t = Math.hypot(sx, sy) / R;
-      const scale = (1 - 0.7 * smooth(0.45, 1.5, t)) * (n.pop ?? 1);
+      const scale = (1 - 0.7 * smooth(0.45, 1.5, t)) * (n.pop ?? 1) * vz;
       const squeeze = 1 - 0.18 * smooth(0.6, 1.6, t);
-      const px = W / 2 + sx * squeeze, py = H / 2 + sy * squeeze;
+      const px = W / 2 + sx * squeeze, py = H * vcy + sy * squeeze;
 
       const half = SIZE * scale / 2;
       const visible = px + half > 0 && px - half < W && py + half > 0 && py - half < H && scale > 0.05;
@@ -484,6 +507,26 @@
     removeNode(n.p.id);
   };
   await refreshAdmin();
+
+  // ---------- 촬영 화면과 통신 ----------
+  // 던져진 사진이 가운데로 들어오면 주변 사진들이 튕겨났다가 다시 모임
+  function insertThrown(p) {
+    $('empty')?.remove();
+    for (const n of nodes) {
+      let d = Math.hypot(n.cx, n.cy), ux, uy;
+      if (d < 1) { const a = Math.random() * Math.PI * 2; ux = Math.cos(a); uy = Math.sin(a); d = 1; }
+      else { ux = n.cx / d; uy = n.cy / d; }
+      const f = 1400 * Math.exp(-d / (D * 2.4));
+      n.vx += ux * f; n.vy += uy * f;
+    }
+    if (addNode({ ...p, archived: true, hidden: false }, true)) layout();
+  }
+  addEventListener('message', e => {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === 'booth:mode') setViewMode(e.data.mode);
+    if (e.data.type === 'booth:insert') insertThrown(e.data.photo);
+  });
+  setViewMode(viewMode);
 
   // ---------- 데이터 ----------
   measure();

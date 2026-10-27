@@ -1,4 +1,11 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+/* Maax Mono 확보 전 임시 대체 폰트 */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+
+/* Maax Mono: fonts/ 폴더에 파일을 넣으면 자동 적용 (파일명은 아래와 맞추기) */
+@font-face { font-family: 'Maax Mono'; src: url('fonts/MaaxMono-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Maax Mono'; src: url('fonts/MaaxMono-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Maax Mono'; src: url('fonts/MaaxMono-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 
 :root {
   --bg: #000000;
@@ -10,7 +17,10 @@
   --accent-fg: #000000;
   --danger: #ff6b5a;
   color-scheme: dark;
+  /* 영문은 Maax Mono, 한글은 Pretendard */
+  --mono: 'Maax Mono', 'DM Mono', 'Pretendard', ui-monospace, monospace;
 }
+.mono { font-family: var(--mono); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
