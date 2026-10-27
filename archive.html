@@ -4,18 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
-<link rel="stylesheet" href="style.css?v=20261027142929">
+<link rel="stylesheet" href="style.css?v=20261027143209">
 <style>
   html, body { overflow: hidden; overscroll-behavior: none; }
 
   /* 상단 오버레이 */
   .top {
     position: fixed; top: 0; left: 0; right: 0; z-index: 3;
-    padding: 64px 24px 72px; pointer-events: none; text-align: center;
-    background: linear-gradient(#000 0%, rgba(0,0,0,.8) 40%, transparent);
+    padding: calc(20vh - 0.6em) 24px 7vh; pointer-events: none; text-align: center;
+    font-size: clamp(34px, 4.6vw, 76px);
+    background: linear-gradient(#000 0%, rgba(0,0,0,.88) 72%, transparent);
   }
   .welcome {
-    margin: 0; color: #fff; font-family: var(--mono); font-size: 34px; font-weight: 500; letter-spacing: .06em;
+    margin: 0; color: #fff; font-family: var(--mono); font-size: 1em; font-weight: 500; letter-spacing: .04em;
     display: inline-flex; align-items: baseline; gap: .55em;
   }
   .welcome img { height: .74em; width: auto; display: block; align-self: center; transform: translateY(-.02em); }
@@ -110,8 +111,7 @@
   dialog .msg { color: var(--danger); font-size: 14px; min-height: 20px; margin: 4px 0 0; }
 
   @media (max-width: 600px) {
-    .top { padding: 36px 16px 48px; }
-    .welcome { font-size: 22px; }
+    .top { padding: calc(16vh - 0.6em) 16px 6vh; font-size: 24px; }
   }
   @media (hover: none) { .stage { cursor: auto; } }
 
@@ -156,9 +156,9 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261027142929"></script>
-<script src="lib/supabase.min.js?v=20261027142929"></script>
-<script src="common.js?v=20261027142929"></script>
+<script src="config.js?v=20261027143209"></script>
+<script src="lib/supabase.min.js?v=20261027143209"></script>
+<script src="common.js?v=20261027143209"></script>
 <script>
 (async function () {
   const { C, db, photoUrl, esc } = window.Booth;
@@ -174,7 +174,7 @@
 
   // 보기 모드: full = 갤러리, preview = 촬영 완료 화면 뒤 (작게, 위쪽)
   let viewMode = new URLSearchParams(location.search).get('mode') === 'preview' ? 'preview' : 'full';
-  const VIEW = { full: { zoom: 1, cy: 0.5 }, preview: { zoom: 0.62, cy: 0.25 } };
+  const VIEW = { full: { zoom: 1, cy: 0.6 }, preview: { zoom: 0.62, cy: 0.25 } };
   let vz = VIEW[viewMode].zoom, vcy = VIEW[viewMode].cy;
   function setViewMode(m) {
     viewMode = m === 'preview' ? 'preview' : 'full';
